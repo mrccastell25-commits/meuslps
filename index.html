@@ -145,6 +145,16 @@
   .detail.playing #tPlay .i-play{display:none}
   .detail.playing #tPlay .i-pause{display:block}
 
+  .viz{display:block;width:100%;height:68px;border-radius:10px;background:rgba(255,255,255,.06);margin:0 0 12px}
+  .vol{display:flex;align-items:center;gap:10px;margin:10px 0 0}
+  .vol .ctl.round{width:40px;height:40px;flex:none}
+  .vol .ctl.round svg{width:20px;height:20px}
+  .vol input{flex:1;min-width:0;accent-color:var(--sticker);height:24px;margin:0}
+  .vol output{flex:none;min-width:34px;text-align:right;font-family:'Special Elite',monospace;font-size:12px;color:rgba(238,243,241,.75)}
+  #vMute .i-off{display:none}
+  #vMute.off .i-on{display:none}
+  #vMute.off .i-off{display:block}
+
   /* abertura */
   #intro{position:fixed;inset:0;z-index:100;background:#0b0f0e;transition:opacity .7s}
   #intro.out{opacity:0;pointer-events:none}
@@ -229,6 +239,7 @@
       <h2 id="dTitle"></h2>
       <p class="meta" id="dMeta"></p>
       <ol class="tracks" id="dTracks" aria-label="Faixas do disco"></ol>
+      <canvas class="viz" id="viz" aria-hidden="true"></canvas>
       <div class="seek">
         <span id="dCur">0:00</span>
         <input type="range" id="dSeek" min="0" max="1" step="1" value="0" aria-label="Posição na faixa">
@@ -241,6 +252,14 @@
           <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
         </button>
         <button class="ctl round" id="tNext" type="button" aria-label="Próxima faixa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l10.5-7z"/></svg></button>
+      </div>
+      <div class="vol">
+        <button class="ctl round" id="vMute" type="button" aria-label="Silenciar">
+          <svg class="i-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.6 5.8a9 9 0 0 1 0 12.4" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <input type="range" id="vol" min="0" max="100" step="1" value="80" aria-label="Volume">
+        <output id="volOut">80%</output>
       </div>
       <p class="note" id="dNote" role="status"></p>
       <div class="actions">
@@ -630,7 +649,7 @@
       width:'256', height:'256', videoId:id, playerVars:pv,
       events:{
         onReady:function(e){
-          playerReady = true;
+          playerReady = true; applyVolume();
           if(pendingId){ e.target.loadVideoById(pendingId); pendingId = null; }
           else { try{ e.target.playVideo(); }catch(_){} }
         },
@@ -644,7 +663,7 @@
   }
   function onState(e){
     var s = e.data;
-    if(s === 1){ detail.classList.add('playing'); startProgress(); }
+    if(s === 1){ detail.classList.add('playing'); startProgress(); applyVolume(); }
     else if(s === 2){ detail.classList.remove('playing'); }
     else if(s === 0){
       detail.classList.remove('playing');
@@ -662,7 +681,8 @@
       150:'o dono do vídeo bloqueou a reprodução em outros sites',
       153:'o YouTube recusou por falta de origem (abra o site por http/https, não pelo arquivo no computador)'
     }[c] || 'erro desconhecido';
-    dNote.textContent = 'Não consegui tocar esta faixa (' + why + ', código ' + c + '). Pulando para a próxima.';
+    dNote.textContent = 'Não consegui tocar esta faixa (' + why + ', código ' + c + ').' + (c === 153 ? '' : ' Pulando para a próxima.');
+    if(c === 153) return;
     var at = curTrack, al = curAlbum;
     setTimeout(function(){
       if(opened && modal === 'detail' && curAlbum === al && curTrack === at && at < albums[al].tracks.length - 1) playTrack(at + 1);
@@ -733,11 +753,12 @@
     showAlbum(i, true);
     detail.hidden = false;
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ detail.classList.add('open'); }); });
+    requestAnimationFrame(startViz);
     $('dClose').focus({preventScroll:true});
   }
   function closeDetail(){
     detail.classList.remove('open', 'playing');
-    pendingId = null; stopProgress();
+    pendingId = null; stopProgress(); stopViz();
     try{ if(player && playerReady) player.stopVideo(); }catch(e){}
     setTimeout(function(){
       detail.hidden = true; opened = false; modal = null;
@@ -758,6 +779,69 @@
   aNext.addEventListener('click', function(){ albumStep(1); });
   $('dClose').addEventListener('click', closeDetail);
   detail.addEventListener('click', function(e){ if(e.target === detail) closeDetail(); });
+
+  /* ---------- volume (controla o player do YouTube de verdade) ---------- */
+  var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
+  try{ var sv = localStorage.getItem('gaveta:vol'); if(sv !== null && !isNaN(+sv)) volume = clamp(+sv, 0, 100); }catch(e){}
+  function paintVolume(){
+    vol.value = volume; volOut.textContent = (muted ? 0 : volume) + '%';
+    vMute.classList.toggle('off', muted || volume === 0);
+    vMute.setAttribute('aria-label', muted ? 'Ativar o som' : 'Silenciar');
+  }
+  function applyVolume(){
+    paintVolume();
+    if(!player || !playerReady) return;
+    try{ player.setVolume(volume); if(muted || volume === 0) player.mute(); else player.unMute(); }catch(e){}
+  }
+  vol.addEventListener('input', function(){
+    volume = +vol.value; if(volume > 0) muted = false;
+    try{ localStorage.setItem('gaveta:vol', String(volume)); }catch(e){}
+    applyVolume();
+  });
+  vMute.addEventListener('click', function(){ muted = !muted; if(!muted && volume === 0){ volume = 50; } applyVolume(); });
+  paintVolume();
+
+  /* ---------- luz dançante (efeito visual: acompanha o play/pause, não lê o áudio) ---------- */
+  var viz = $('viz'), vctx = viz.getContext('2d'), NB = 28, vraf = 0, vt = 0, vlvl = 0, vLast = 0, peaks = [], phs = [], sps = [];
+  var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for(var vi = 0; vi < NB; vi++){ phs.push((hash('p' + vi) % 628) / 100); sps.push(1.6 + (hash('s' + vi) % 300) / 100); peaks.push(0); }
+  function sizeViz(){
+    var dpr = window.devicePixelRatio || 1, w = viz.clientWidth, h = viz.clientHeight;
+    if(!w) return;
+    viz.width = Math.round(w*dpr); viz.height = Math.round(h*dpr); vctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function drawViz(ts){
+    var dt = Math.min(0.05, (ts - vLast)/1000 || 0.016); vLast = ts; vt += dt;
+    var playing = detail.classList.contains('playing');
+    vlvl += ((playing ? 1 : 0) - vlvl) * Math.min(1, dt*5);
+    var w = viz.clientWidth, h = viz.clientHeight, a = albums[curAlbum];
+    if(w && a){
+      vctx.clearRect(0, 0, w, h);
+      var bpm = 84 + hash(a.tracks[curTrack].id) % 60;
+      var beat = Math.pow(Math.sin(vt*Math.PI*bpm/60)*0.5 + 0.5, 2.5);
+      var bw = w/NB, g = vctx.createLinearGradient(0, h, 0, 0);
+      g.addColorStop(0, a.p[1]); g.addColorStop(0.6, '#f2b705'); g.addColorStop(1, '#ff5a3c');
+      for(var i = 0; i < NB; i++){
+        var bass = 1 - (i/NB)*0.55;
+        var v = (Math.sin(vt*sps[i] + phs[i])*0.5 + 0.5) * (0.3 + 0.7*beat*bass) * (0.55 + 0.45*Math.sin(vt*0.7 + i));
+        v = clamp(0.06 + v, 0, 1)*vlvl + 0.03;
+        peaks[i] = Math.max(v, peaks[i] - dt*0.45);
+        var bh = Math.max(2, v*(h-4)), x = i*bw + 1.5;
+        vctx.fillStyle = g; vctx.fillRect(x, h - bh, bw - 3, bh);
+        vctx.fillStyle = '#fff'; vctx.globalAlpha = 0.85; vctx.fillRect(x, h - Math.max(3, peaks[i]*(h-4)) - 3, bw - 3, 2); vctx.globalAlpha = 1;
+      }
+      var glow = beat*vlvl;
+      dCover.style.boxShadow = '0 14px 34px rgba(0,0,0,.6), 0 0 ' + (glow*46).toFixed(1) + 'px ' + (glow*8).toFixed(1) + 'px ' + a.p[1].replace('hsl(', 'hsla(').replace(')', ',' + (0.55*glow).toFixed(2) + ')');
+    }
+    vraf = requestAnimationFrame(drawViz);
+  }
+  function startViz(){
+    sizeViz();
+    if(reduceMotion || vraf) return;
+    vLast = performance.now(); vraf = requestAnimationFrame(drawViz);
+  }
+  function stopViz(){ if(vraf){ cancelAnimationFrame(vraf); vraf = 0; } dCover.style.boxShadow = ''; }
+  window.addEventListener('resize', function(){ if(opened && modal === 'detail') sizeViz(); });
 
   /* ---------- painel da lista ---------- */
   var listBox = $('listBox'), sErr = $('sErr');
