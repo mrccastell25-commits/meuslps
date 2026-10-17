@@ -199,6 +199,8 @@
     -webkit-mask:radial-gradient(circle,transparent 0 21%,#000 22%);mask:radial-gradient(circle,transparent 0 21%,#000 22%)}
   .hspindle{left:494px;top:753px;width:16px;height:16px;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#fff,#9a9aa0 55%,#3a3a3e)}
   .hcover{left:0;top:0;width:400px;height:910px;transform-origin:0 0;overflow:hidden;background:#111;pointer-events:none}
+  #hArt{position:absolute;inset:0}
+  #hArt svg{position:absolute;inset:0;display:block;width:100%;height:100%}
   .hcbg{position:absolute;inset:-40px;filter:blur(18px) saturate(1.1) brightness(.6)}
   .hcsq{position:absolute;left:0;top:150px;width:400px;height:400px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .hcbg svg,.hcsq svg{position:absolute;inset:0;display:block;width:100%;height:100%}
@@ -1121,7 +1123,7 @@
     for(i = 7; i >= 0; i--){ var v = b[i]; for(c = i + 1; c < 8; c++) v -= A[i][c]*s[c]; s[i] = v / A[i][i]; }
     return 'matrix3d(' + [s[0], s[3], 0, s[6], s[1], s[4], 0, s[7], 0, 0, 1, 0, s[2], s[5], 0, 1].join(',') + ')';
   }
-  hCover.style.transform = homog(400, 910, [[1118,408],[1402,401],[1349,1106],[1097,1041]]);
+  hCover.style.transform = homog(400, 910, [[1113,403],[1407,395],[1353,1111],[1091,1045]]);
 
   function fitScene(){ var w = hfit.clientWidth; if(w) scene.style.transform = 'scale(' + (w/HW).toFixed(5) + ')'; }
   window.addEventListener('resize', fitScene);
@@ -1143,8 +1145,7 @@
   }
   /* capa do disco no estojo: quadrada e nítida, com extensão desfocada para preencher o estojo alto */
   function hifiCover(a){
-    var h = coverHTML(a);
-    hArt.innerHTML = '<div class="hcbg">' + h + '</div><div class="hcsq">' + h + '</div>';
+    hArt.innerHTML = coverHTML(a);
   }
   function hifiAlbum(a){
     hLabel.innerHTML = labelSVG(a);
