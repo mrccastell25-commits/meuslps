@@ -118,7 +118,7 @@
   /* o player do YouTube fica fora da tela: só o áudio é usado */
   .yt-hidden{position:fixed;left:-9999px;top:0;width:256px;height:256px;overflow:hidden;pointer-events:none}
 
-  .tracks{list-style:none;margin:0 0 14px;padding:4px;max-height:30vh;overflow:auto;border-radius:10px;background:rgba(255,255,255,.07);overscroll-behavior:contain}
+  .tracks{list-style:none;margin:0 0 12px;padding:4px;max-height:24vh;overflow:auto;border-radius:10px;background:rgba(255,255,255,.07);overscroll-behavior:contain}
   .trk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:transparent;color:#eef3f1;padding:10px 10px;border-radius:8px;font-size:15px;line-height:1.25}
   .trk:hover{background:rgba(255,255,255,.08)}
   .trk .n{flex:none;width:22px;text-align:right;font-family:'Special Elite',monospace;font-size:13px;color:rgba(238,243,241,.55)}
@@ -145,7 +145,11 @@
   .detail.playing #tPlay .i-play{display:none}
   .detail.playing #tPlay .i-pause{display:block}
 
-  .viz{display:block;width:100%;height:68px;border-radius:10px;background:rgba(255,255,255,.06);margin:0 0 12px}
+  .viz{display:block;width:100%;height:56px;border-radius:10px;background:rgba(255,255,255,.06);margin:0 0 12px}
+  .vus{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}
+  .vu svg{display:block;width:100%;height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,.55))}
+  .edge{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:0;
+    box-shadow:inset 0 0 70px 14px var(--ec,rgba(242,183,5,.85)),inset 0 0 18px 3px var(--ec2,rgba(255,255,255,.5)),inset 0 0 220px 0 var(--ec,rgba(242,183,5,.4))}
   .vizbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-6px 0 10px;font-size:12px;color:rgba(238,243,241,.7)}
   .vizbar .ctl{padding:6px 12px;font-size:12px}
   .vol{display:flex;align-items:center;gap:10px;margin:10px 0 0}
@@ -267,6 +271,7 @@
       <h2 id="dTitle"></h2>
       <p class="meta" id="dMeta"></p>
       <ol class="tracks" id="dTracks" aria-label="Faixas do disco"></ol>
+      <div class="vus" aria-hidden="true"><div class="vu" id="vuL"></div><div class="vu" id="vuR"></div></div>
       <canvas class="viz" id="viz" aria-hidden="true"></canvas>
       <div class="vizbar"><span id="vMode">Efeito visual</span><button class="ctl" id="vReal" type="button" hidden>Analisador real</button></div>
       <div class="seek">
@@ -303,6 +308,8 @@
   </div>
   </div>
 </div>
+
+<div class="edge" id="edge" hidden aria-hidden="true"></div>
 
 <!-- player do YouTube escondido: só o áudio -->
 <div class="yt-hidden" aria-hidden="true"><div id="ytPlayer"></div></div>
@@ -774,6 +781,8 @@
     dCover.innerHTML = coverHTML(a);
     if(!a.photo) loadThumb(a, function(){ if(albums[curAlbum] === a) dCover.innerHTML = coverHTML(a); });
     dVinyl.innerHTML = vinyl(a);
+    edge.style.setProperty('--ec', a.p[1].replace('hsl(', 'hsla(').replace(')', ',.85)'));
+    edge.style.setProperty('--ec2', a.p[3].replace('hsl(', 'hsla(').replace(')', ',.55)'));
     renderTracks(a); markTrack();
     dNote.textContent = '';
     $('dOpen').href = 'https://music.youtube.com/watch?v=' + a.tracks[0].id;
@@ -837,11 +846,11 @@
   paintVolume();
 
   /* ---------- luz dançante (efeito visual: acompanha o play/pause, não lê o áudio) ---------- */
-  var viz = $('viz'), vctx = viz.getContext('2d'), NB = 28, vraf = 0, vt = 0, vlvl = 0, vLast = 0, peaks = [], phs = [], sps = [];
+  var edge = $('edge'), viz = $('viz'), vctx = viz.getContext('2d'), NB = 28, vraf = 0, vt = 0, vlvl = 0, vLast = 0, peaks = [], phs = [], sps = [];
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   for(var vi = 0; vi < NB; vi++){ phs.push((hash('p' + vi) % 628) / 100); sps.push(1.6 + (hash('s' + vi) % 300) / 100); peaks.push(0); }
   /* analisador real: ouve o áudio da própria aba (precisa de permissão; Chrome/Edge no computador) */
-  var vac = null, an = null, anData = null, anStream = null, realVals = [], realLow = 0, vReal = $('vReal'), vMode = $('vMode');
+  var vac = null, an = null, anL = null, anR = null, tdL = null, tdR = null, anData = null, anStream = null, realVals = [], realLow = 0, vReal = $('vReal'), vMode = $('vMode');
   for(var ri = 0; ri < NB; ri++) realVals.push(0);
   function paintReal(){
     vReal.textContent = an ? 'Voltar ao efeito' : 'Analisador real';
@@ -849,7 +858,7 @@
   }
   function stopReal(){
     if(anStream){ try{ anStream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} }
-    anStream = null; an = null; paintReal();
+    anStream = null; an = null; anL = null; anR = null; paintReal();
   }
   function startReal(){
     if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return;
@@ -864,7 +873,11 @@
       if(!vac){ st.getTracks().forEach(function(t){ t.stop(); }); return; }
       if(vac.state === 'suspended') vac.resume();
       var node = vac.createAnalyser(); node.fftSize = 1024; node.smoothingTimeConstant = 0.78;
-      vac.createMediaStreamSource(new MediaStream(st.getAudioTracks())).connect(node);
+      var src = vac.createMediaStreamSource(new MediaStream(st.getAudioTracks()));
+      src.connect(node);
+      var spl = vac.createChannelSplitter(2), nl = vac.createAnalyser(), nr = vac.createAnalyser();
+      nl.fftSize = 2048; nr.fftSize = 2048; src.connect(spl); spl.connect(nl, 0); spl.connect(nr, 1);
+      tdL = new Float32Array(nl.fftSize); tdR = new Float32Array(nr.fftSize); anL = nl; anR = nr;
       anData = new Uint8Array(node.frequencyBinCount); an = node; anStream = st;
       st.getAudioTracks()[0].addEventListener('ended', stopReal);
       dNote.textContent = ''; paintReal();
@@ -886,6 +899,96 @@
     realLow = clamp(Math.pow(lo/cnt, 2) * 1.6, 0, 1);
     return true;
   }
+  /* ---------- VU analógicos (esquerdo e direito) ---------- */
+  var vuState = [{x:0, v:0, led:0}, {x:0, v:0, led:0}], vuEls = [];
+  function vuSVG(p, lab){
+    var cx = 150, cy = 165, R = 118, A0 = -50, SP = 100;
+    function pt(r, pos){ var a = (A0 + pos*SP) * Math.PI/180; return [cx + r*Math.sin(a), cy - r*Math.cos(a)]; }
+    function po(db){ return Math.pow(10, (db - 3)/20); }
+    function f(n){ return n.toFixed(1); }
+    function tick(r1, r2, pos, w, col){ var a = pt(r1, pos), b = pt(r2, pos); return '<line x1="'+f(a[0])+'" y1="'+f(a[1])+'" x2="'+f(b[0])+'" y2="'+f(b[1])+'" stroke="'+col+'" stroke-width="'+w+'"/>'; }
+    function lbl(r, pos, t, size, col, weight){ var a = pt(r, pos); return '<text x="'+f(a[0])+'" y="'+f(a[1])+'" font-size="'+size+'" fill="'+col+'" font-weight="'+weight+'" text-anchor="middle" dominant-baseline="central">'+t+'</text>'; }
+    function arc(r, p0, p1, w, col){ var a = pt(r, p0), b = pt(r, p1); return '<path d="M'+f(a[0])+' '+f(a[1])+' A'+r+' '+r+' 0 0 1 '+f(b[0])+' '+f(b[1])+'" fill="none" stroke="'+col+'" stroke-width="'+w+'"/>'; }
+    var ink = '#1b1712', red = '#c42a1d', g = '', i;
+    var majors = [[-20,'20'],[-10,'10'],[-7,'7'],[-5,'5'],[-3,'3'],[-2,'2'],[-1,'1'],[0,'0'],[1,'1'],[2,'2'],[3,'3']], minors = [-15,-9,-8,-6,-4];
+    g += arc(R, po(-20), po(0), 1.8, ink) + arc(R-3, po(0), 1, 6, red);
+    for(i = 0; i < majors.length; i++){
+      var m = majors[i], isRed = m[0] > 0, pp = po(m[0]);
+      g += tick(R+2, R-10, pp, 2, isRed ? red : ink) + lbl(R-22, pp, m[1], 11.5, isRed ? red : ink, 700);
+    }
+    for(i = 0; i < minors.length; i++) g += tick(R, R-6, po(minors[i]), 1.2, ink);
+    g += lbl(R-22, 0.015, '–', 12, ink, 700) + lbl(R-22, 1.07, '+', 12, red, 700);
+    var ps = [0,20,40,60,80,100];
+    g += arc(R-34, 0, po(0), 1, ink);
+    for(i = 0; i < ps.length; i++){ var pq = po(0)*ps[i]/100; g += tick(R-34, R-39, pq, 1.1, ink) + lbl(R-48, pq, ps[i], 7.5, ink, 600); }
+    var nd = '<line x1="150" y1="172" x2="150" y2="41" stroke-linecap="round"';
+    return '<svg viewBox="0 0 300 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" font-family="\'Bricolage Grotesque\',Helvetica,Arial,sans-serif">'
+      + '<defs>'
+      + '<linearGradient id="'+p+'c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c4c51"/><stop offset=".07" stop-color="#2d2d31"/><stop offset="1" stop-color="#0f0f11"/></linearGradient>'
+      + '<radialGradient id="'+p+'f" cx="50%" cy="62%" r="75%"><stop offset="0" stop-color="#fff2c8"/><stop offset=".55" stop-color="#edd596"/><stop offset="1" stop-color="#c9a75a"/></radialGradient>'
+      + '<linearGradient id="'+p+'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+      + '<radialGradient id="'+p+'m" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#e8e8ea"/><stop offset="1" stop-color="#55555a"/></radialGradient>'
+      + '<linearGradient id="'+p+'d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#303034"/><stop offset="1" stop-color="#0b0b0c"/></linearGradient>'
+      + '<filter id="'+p+'b" x="-30%" y="-10%" width="160%" height="120%"><feGaussianBlur stdDeviation="1.4"/></filter>'
+      + '<filter id="'+p+'i" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="4"/></filter>'
+      + '<filter id="'+p+'o" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>'
+      + '<clipPath id="'+p+'w"><rect x="12" y="12" width="276" height="166" rx="6"/></clipPath>'
+      + '</defs>'
+      + '<rect width="300" height="190" rx="12" fill="url(#'+p+'c)"/>'
+      + '<rect x=".75" y=".75" width="298.5" height="188.5" rx="11.5" fill="none" stroke="#fff" stroke-opacity=".18"/>'
+      + '<rect x="10" y="10" width="280" height="170" rx="8" fill="#050506"/>'
+      + '<g clip-path="url(#'+p+'w)">'
+      + '<rect x="12" y="12" width="276" height="166" fill="url(#'+p+'f)"/>'
+      + '<rect id="'+p+'l" x="12" y="12" width="276" height="166" fill="#ffd57a" opacity=".08"/>'
+      + g
+      + '<text x="150" y="130" font-size="22" font-weight="800" letter-spacing="2" fill="'+ink+'" text-anchor="middle">VU</text>'
+      + '<text x="28" y="165" font-size="11" font-weight="800" fill="'+ink+'">'+lab+'</text>'
+      + '<g transform="translate(3 4)" opacity=".32" filter="url(#'+p+'b)"><g id="'+p+'h" transform="rotate(-50 150 165)">'+nd+' stroke="#000" stroke-width="2.4"/></g></g>'
+      + '<g id="'+p+'n" transform="rotate(-50 150 165)">'+nd+' stroke="#15120e" stroke-width="1.6"/></g>'
+      + '<path d="M92 178 Q150 108 208 178 Z" fill="url(#'+p+'d)"/>'
+      + '<path d="M92 178 Q150 108 208 178" fill="none" stroke="#fff" stroke-opacity=".14"/>'
+      + '<rect x="12" y="12" width="276" height="166" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="10" filter="url(#'+p+'i)"/>'
+      + '<path d="M12 12 H288 V62 Q150 98 12 54 Z" fill="url(#'+p+'g)"/>'
+      + '<circle cx="268" cy="30" r="9" fill="#ff3b2a" opacity="0" id="'+p+'k" filter="url(#'+p+'o)"/>'
+      + '<circle cx="268" cy="30" r="3.6" fill="#3a0d09"/><circle id="'+p+'q" cx="268" cy="30" r="3.6" fill="#ff6a56" opacity="0"/>'
+      + '</g>'
+      + [[6,6],[294,6],[6,184],[294,184]].map(function(c){ return '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="2.8" fill="url(#'+p+'m)" stroke="#000" stroke-opacity=".5" stroke-width=".5"/><line x1="'+(c[0]-1.8)+'" y1="'+(c[1]+1.2)+'" x2="'+(c[0]+1.8)+'" y2="'+(c[1]-1.2)+'" stroke="#222" stroke-width=".7"/>'; }).join('')
+      + '</svg>';
+  }
+  function buildVU(){
+    ['L','R'].forEach(function(ch, k){
+      var pre = 'vu' + ch;
+      $(pre).innerHTML = vuSVG(pre, ch);
+      vuEls[k] = {n: $(pre+'n'), h: $(pre+'h'), l: $(pre+'l'), k: $(pre+'k'), q: $(pre+'q')};
+    });
+  }
+  function rmsOf(b){ var s = 0; for(var i = 0; i < b.length; i++) s += b[i]*b[i]; return Math.sqrt(s / b.length); }
+  function vuTick(dt, playing, mean, beat){
+    var t = [0, 0];
+    if(an && anL){
+      anL.getFloatTimeDomainData(tdL); anR.getFloatTimeDomainData(tdR);
+      var l = rmsOf(tdL), r = rmsOf(tdR);
+      if(r < 1e-5 && l > 1e-5) r = l; else if(l < 1e-5 && r > 1e-5) l = r;
+      var comp = 1 / Math.max(0.1, muted ? 1 : volume/100);
+      t = [l*3.55*comp, r*3.55*comp];   /* 0 VU = -14 dBFS (RMS) */
+    } else if(playing){
+      var base = clamp(0.25 + 0.9*mean + 0.25*beat, 0, 1.05);
+      t = [base*(0.93 + 0.07*Math.sin(vt*1.3)), base*(0.93 + 0.07*Math.sin(vt*1.7 + 1))];
+    }
+    for(var k = 0; k < 2; k++){
+      var m = vuState[k], e = vuEls[k]; if(!e) continue;
+      var tg = clamp(t[k], 0, 1.1), n = Math.max(1, Math.ceil(dt/0.008)), h = dt/n;
+      for(var j = 0; j < n; j++){ m.v += (110*(tg - m.x) - 17*m.v)*h; m.x += m.v*h; }   /* balística de ponteiro VU */
+      if(m.x < -0.02){ m.x = -0.02; m.v = 0; } if(m.x > 1.08){ m.x = 1.08; m.v = 0; }
+      var tr = 'rotate(' + (-50 + m.x*100).toFixed(2) + ' 150 165)';
+      e.n.setAttribute('transform', tr); e.h.setAttribute('transform', tr);
+      e.l.setAttribute('opacity', (0.08 + 0.2*clamp(m.x, 0, 1)).toFixed(3));
+      m.led = tg > 0.95 ? 1 : Math.max(0, m.led - dt*2.5);
+      e.k.setAttribute('opacity', (m.led*0.9).toFixed(2)); e.q.setAttribute('opacity', m.led.toFixed(2));
+    }
+  }
+  buildVU();
+
   function sizeViz(){
     var dpr = window.devicePixelRatio || 1, w = viz.clientWidth, h = viz.clientHeight;
     if(!w) return;
@@ -902,26 +1005,29 @@
       var beat = Math.pow(Math.sin(vt*Math.PI*bpm/60)*0.5 + 0.5, 2.5);
       var bw = w/NB, g = vctx.createLinearGradient(0, h, 0, 0);
       g.addColorStop(0, a.p[1]); g.addColorStop(0.6, '#f2b705'); g.addColorStop(1, '#ff5a3c');
-      var real = readReal();
+      var real = readReal(), vsum = 0;
       for(var i = 0; i < NB; i++){
         var bass = 1 - (i/NB)*0.55;
         var v = real ? realVals[i] : clamp(0.06 + (Math.sin(vt*sps[i] + phs[i])*0.5 + 0.5) * (0.3 + 0.7*beat*bass) * (0.55 + 0.45*Math.sin(vt*0.7 + i)), 0, 1)*vlvl + 0.03;
-        peaks[i] = Math.max(v, peaks[i] - dt*0.45);
+        peaks[i] = Math.max(v, peaks[i] - dt*0.45); vsum += v;
         var bh = Math.max(2, v*(h-4)), x = i*bw + 1.5;
         vctx.fillStyle = g; vctx.fillRect(x, h - bh, bw - 3, bh);
         vctx.fillStyle = '#fff'; vctx.globalAlpha = 0.85; vctx.fillRect(x, h - Math.max(3, peaks[i]*(h-4)) - 3, bw - 3, 2); vctx.globalAlpha = 1;
       }
       var glow = real ? realLow : beat*vlvl;
+      edge.style.opacity = clamp(0.12*vlvl + 0.88*glow, 0, 1).toFixed(3);
+      vuTick(dt, playing, vsum/NB, beat);
       dCover.style.boxShadow = '0 14px 34px rgba(0,0,0,.6), 0 0 ' + (glow*46).toFixed(1) + 'px ' + (glow*8).toFixed(1) + 'px ' + a.p[1].replace('hsl(', 'hsla(').replace(')', ',' + (0.55*glow).toFixed(2) + ')');
     }
     vraf = requestAnimationFrame(drawViz);
   }
   function startViz(){
-    sizeViz();
-    if(reduceMotion || vraf) return;
+    sizeViz(); edge.hidden = false;
+    if(reduceMotion){ edge.style.opacity = '0.45'; return; }
+    if(vraf) return;
     vLast = performance.now(); vraf = requestAnimationFrame(drawViz);
   }
-  function stopViz(){ if(vraf){ cancelAnimationFrame(vraf); vraf = 0; } dCover.style.boxShadow = ''; }
+  function stopViz(){ if(vraf){ cancelAnimationFrame(vraf); vraf = 0; } dCover.style.boxShadow = ''; edge.hidden = true; edge.style.opacity = 0; }
   window.addEventListener('resize', function(){ if(opened && modal === 'detail') sizeViz(); });
 
   /* ---------- painel da lista ---------- */
