@@ -436,12 +436,12 @@
     <h2 id="sTitle">Monte a gaveta</h2>
     <input class="txt" id="nameBox" type="text" maxlength="28" placeholder="Nome da gaveta (ex.: Rock dos anos 80)" aria-label="Nome da gaveta" autocomplete="off">
     <ol>
-      <li>Abra a playlist no <a id="plLink" href="https://www.youtube.com/playlist?list=PLFYb-tSsq-vl97wk2Rs1vSR4ADwy7TA4e" target="_blank" rel="noopener">YouTube comum</a> e role até o fim, para carregar todas as faixas.</li>
-      <li>Aperte F12, abra a aba Console, cole o código abaixo e tecle Enter. Se o navegador pedir, digite <b>allow pasting</b> antes. A lista fica copiada.</li>
+      <li>Abra a playlist no <a id="plLink" href="https://www.youtube.com/playlist?list=PLFYb-tSsq-vl97wk2Rs1vSR4ADwy7TA4e" target="_blank" rel="noopener">YouTube comum</a> ou no <a href="https://music.youtube.com" target="_blank" rel="noopener">YouTube Music</a> (que também traz o nome do disco). Use o código do mesmo site em que abriu a playlist.</li>
+      <li>Aperte F12, abra a aba Console, cole o código e tecle Enter. Se o navegador pedir, digite <b>allow pasting</b> antes. O código rola a página sozinho para carregar tudo; espere aparecer “N faixas copiadas”.</li>
       <li>Cole a lista na caixa e monte a gaveta. As faixas do mesmo artista viram um disco só. Para agrupar por disco de verdade, escreva uma faixa por linha: <b>disco | faixa | artista | link</b>.</li>
     </ol>
     <pre id="snippet"></pre>
-    <button class="ctl" id="copySnippet" type="button">Copiar código</button>
+    <div class="actions"><button class="ctl" id="copySnippet" type="button">Copiar código (YouTube)</button><button class="ctl" id="copySnippetM" type="button">Copiar código (YouTube Music)</button></div>
     <textarea id="listBox" spellcheck="false" placeholder="Maré de Setembro | Faixa 1 | Os Faróis | https://youtu.be/XXXXXXXXXXX&#10;Maré de Setembro | Faixa 2 | Os Faróis | https://youtu.be/YYYYYYYYYYY"></textarea>
     <p class="err" id="sErr" role="status"></p>
     <div class="actions">
@@ -465,7 +465,8 @@
     {name:'', text:``}, {name:'', text:``}, {name:'', text:``}, {name:'', text:``}, {name:'', text:``}
   ];
 
-  var SNIPPET = "copy([...document.querySelectorAll('a#video-title')].map(a=>{const id=new URL(a.href).searchParams.get('v');const c=a.closest('ytd-playlist-video-renderer')?.querySelector('ytd-channel-name a')?.textContent.trim()||'';return a.textContent.trim()+' | '+c+' | https://youtu.be/'+id}).join('\\n'))";
+  var SNIPPET = "(async()=>{const w=m=>new Promise(r=>setTimeout(r,m));let last=-1,same=0;while(same<5){window.scrollTo(0,document.documentElement.scrollHeight);await w(800);const n=document.querySelectorAll('ytd-playlist-video-renderer').length;if(n===last)same++;else{same=0;last=n}}const rows=[...document.querySelectorAll('ytd-playlist-video-renderer')].map(r=>{const a=r.querySelector('a#video-title');if(!a)return '';const id=new URL(a.href).searchParams.get('v');const c=(r.querySelector('ytd-channel-name a')?.textContent||'').trim().replace(/\\s*-\\s*Topic$/i,'');return [a.textContent.trim(),c,'https://youtu.be/'+id].join('\\t')}).filter(Boolean);copy(rows.join('\\n'));console.log(rows.length+' faixas copiadas')})()";
+  var SNIPPET_MUSIC = "(async()=>{const w=m=>new Promise(r=>setTimeout(r,m)),q=s=>document.querySelectorAll(s);let last=-1,same=0;while(same<5){window.scrollTo(0,document.body.scrollHeight);q('ytmusic-app-layout,#content,ytmusic-browse-response,#contents').forEach(e=>{e.scrollTop=e.scrollHeight});await w(800);const n=q('ytmusic-responsive-list-item-renderer').length;if(n===last)same++;else{same=0;last=n}}const head=(document.querySelector('ytmusic-responsive-header-renderer yt-formatted-string.title,ytmusic-detail-header-renderer yt-formatted-string.title')?.textContent||'').trim();const rows=[...q('ytmusic-responsive-list-item-renderer')].map(r=>{const t=r.querySelector('yt-formatted-string.title'),l=r.querySelector('a[href*=\"watch?v=\"]');if(!t||!l)return '';const id=new URL(l.href).searchParams.get('v');const cols=[...r.querySelectorAll('.secondary-flex-columns yt-formatted-string')].map(x=>x.textContent.trim());return [cols[1]||head,t.textContent.trim(),(cols[0]||'').replace(/\\s*-\\s*Topic$/i,''),'https://youtu.be/'+id].join('\\t')}).filter(Boolean);copy(rows.join('\\n'));console.log(rows.length+' faixas copiadas')})()";
 
   /* ---------- utilidades ---------- */
   var $ = function(id){ return document.getElementById(id); };
@@ -484,7 +485,7 @@
       if(!id){ var b = line.match(/(?:^|\|\s*)([A-Za-z0-9_-]{11})\s*$/); if(b) id = b[1]; }
       if(!id || seen[id]) return;
       seen[id] = 1;
-      var parts = line.split('|').map(function(s){ return s.trim(); });
+      var parts = (line.indexOf('\t') >= 0 ? line.split('\t') : line.split('|')).map(function(s){ return s.trim(); });
       for(var k = 0; k < parts.length; k++){ if(parts[k].indexOf(id) !== -1){ parts.splice(k, 1); break; } }
       var album = '', title, artist = '';
       if(parts.length >= 3){ album = parts[0]; title = parts[1]; artist = parts[2]; }
@@ -666,7 +667,7 @@
   function onIndex(first){
     var a = albums[lastIdx];
     plateTitle.textContent = a.title;
-    plateSub.textContent = a.artist || ' ';
+    plateSub.textContent = (a.artist && a.artist !== a.title) ? a.artist : (a.tracks.length + (a.tracks.length === 1 ? ' faixa' : ' faixas'));
     countEl.textContent = (lastIdx+1) + ' de ' + N;
     live.textContent = a.title + (a.artist ? ', ' + a.artist : '');
     if(!first){ tick(); try{ if(navigator.vibrate) navigator.vibrate(6); }catch(e){} }
@@ -1349,12 +1350,16 @@
   /* ---------- painel da lista ---------- */
   var listBox = $('listBox'), sErr = $('sErr');
   $('snippet').textContent = SNIPPET;
-  $('copySnippet').addEventListener('click', function(){
-    var btn = this;
-    function done(){ btn.textContent = 'Código copiado'; setTimeout(function(){ btn.textContent = 'Copiar código'; }, 1800); }
-    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(SNIPPET).then(done, function(){}); }
-    else { var r = document.createRange(); r.selectNodeContents($('snippet')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
-  });
+  function wireCopy(btnId, code){
+    var b0 = $(btnId), label = b0.textContent;
+    b0.addEventListener('click', function(){
+      var btn = this; $('snippet').textContent = code;
+      function done(){ btn.textContent = 'Código copiado'; setTimeout(function(){ btn.textContent = label; }, 1800); }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(code).then(done, function(){}); }
+      else { var r = document.createRange(); r.selectNodeContents($('snippet')); var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    });
+  }
+  wireCopy('copySnippet', SNIPPET); wireCopy('copySnippetM', SNIPPET_MUSIC);
   /* ---------- loja: 10 gavetas, cada uma com a sua lista ---------- */
   var NDRAW = 10, saved = [], curDrawer = -1, editing = -1;
   var shop = $('shop'), cabinet = $('cabinet'), nameBox = $('nameBox'), brandTitle = $('brandTitle');
