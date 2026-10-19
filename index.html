@@ -1365,9 +1365,20 @@
   /* ---------- loja: 10 gavetas, cada uma com a sua lista ---------- */
   var NDRAW = 10, saved = [], curDrawer = -1, editing = -1;
   var shop = $('shop'), cabinet = $('cabinet'), nameBox = $('nameBox'), brandTitle = $('brandTitle');
-  /* ---------- Firebase (Firestore): um documento por gaveta em gaveta_loja/{0..9} ---------- */
+  /* ---------- Firebase (Firestore): só texto, 1 documento (gaveta_loja/loja), 1 leitura por visita ---------- */
   var FIREBASE_CONFIG = { apiKey:'', authDomain:'', projectId:'', appId:'' }; // <- cole aqui a config do seu projeto
-  var FB_COL = 'gaveta_loja', fbDb = null, fbApi = null;
+  var FB_COL = 'gaveta_loja', FB_DOC = 'loja', fbDb = null, fbApi = null;
+  var YT_ID = '([A-Za-z0-9_-]{11})';
+  function packText(t){   // link completo -> só o ID (menos texto trafegando)
+    return String(t).split(/\r?\n/).map(function(l){
+      return l.replace(new RegExp('https?://(?:www\\.|m\\.)?(?:youtu\\.be/|youtube\\.com/(?:watch\\?(?:[^\\s|]*&)?v=|shorts/|embed/))' + YT_ID + '[^\\s|]*'), '$1');
+    }).join('\n');
+  }
+  function unpackText(t){ // ID no fim da linha -> link
+    return String(t).split(/\r?\n/).map(function(l){
+      return l.replace(new RegExp('(^|\\|\\s*)' + YT_ID + '\\s*$'), '$1https://youtu.be/$2');
+    }).join('\n');
+  }
   function emptyDrawers(){ var a = []; for(var i = 0; i < NDRAW; i++) a.push({name:'', text:''}); return a; }
   function loadDrawers(){
     var raw = null;
@@ -1379,24 +1390,26 @@
   function saveDrawers(i){
     cacheDrawers();
     if(!fbDb) return;
-    var idx = (typeof i === 'number') ? [i] : saved.map(function(_, k){ return k; });
-    idx.forEach(function(k){
-      fbApi.setDoc(fbApi.doc(fbDb, FB_COL, String(k)), {name: saved[k].name, text: saved[k].text, updatedAt: Date.now()})
-        .catch(function(e){ console.error('Firebase: falha ao salvar a gaveta ' + (k+1), e); });
+    var o = {}; // só a(s) gaveta(s) alterada(s): n<i> = nome, t<i> = texto
+    ((typeof i === 'number') ? [i] : saved.map(function(_, k){ return k; })).forEach(function(k){
+      o['n' + k] = saved[k].name; o['t' + k] = packText(saved[k].text);
     });
+    fbApi.setDoc(fbApi.doc(fbDb, FB_COL, FB_DOC), o, {merge: true})
+      .catch(function(e){ console.error('Firebase: falha ao salvar', e); });
   }
   function initFirebase(){
     if(!FIREBASE_CONFIG.projectId) return;   // sem config: segue só com o cache local
     var base = 'https://www.gstatic.com/firebasejs/10.12.2/';
     Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]).then(function(m){
       fbApi = m[1]; fbDb = fbApi.getFirestore(m[0].initializeApp(FIREBASE_CONFIG));
-      return fbApi.getDocs(fbApi.collection(fbDb, FB_COL));
+      return fbApi.getDoc(fbApi.doc(fbDb, FB_COL, FB_DOC));
     }).then(function(snap){
-      snap.forEach(function(d){
-        var k = +d.id, v = d.data(); if(k >= 0 && k < NDRAW) saved[k] = {name: String(v.name || ''), text: String(v.text || '')};
-      });
-      cacheDrawers(); if(curDrawer < 0 && !shop.hidden) renderShop();
-    }).catch(function(e){ console.error('Firebase: falha ao carregar as gavetas', e); });
+      if(snap.exists()){
+        var v = snap.data();
+        for(var k = 0; k < NDRAW; k++) if(('t' + k) in v || ('n' + k) in v) saved[k] = {name: String(v['n' + k] || ''), text: unpackText(v['t' + k] || '')};
+        cacheDrawers(); if(curDrawer < 0 && !shop.hidden) renderShop();
+      }
+    }).catch(function(e){ console.error('Firebase: falha ao carregar', e); });
   }
   function fixedOf(i){ return DRAWERS[i] || {}; }
   function drawerText(i){ return (fixedOf(i).text || '').trim() || saved[i].text.trim(); }
