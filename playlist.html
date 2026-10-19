@@ -499,6 +499,8 @@
             font-size: 0.8rem;
             margin-top: auto;
         }
+            .col-hide { display: none; }
+        .input-missing { border-color: #ff5252 !important; background: rgba(255,82,82,.14) !important; }
     </style>
 </head>
 <body>
@@ -587,24 +589,23 @@
                 </h3>
                 <button id="btn-export-json" class="btn-export-all">
                     <i data-lucide="file-json"></i>
-                    <span>Exportar JSON para o TubeFlix</span>
+                    <span>Exportar JSON para a Gaveta</span>
                 </button>
             </div>
 
             <div class="alert-info" style="background-color: rgba(70, 211, 105, 0.08); border-color: rgba(70, 211, 105, 0.2); color: #a3e635;">
                 <i data-lucide="check-circle" style="width: 18px; height: 18px;"></i>
                 <div>
-                    <strong>Dica de Organização:</strong> Edite as categorias, durações e classificações diretamente na tabela abaixo antes de exportar. O sistema usará nosso algoritmo inteligente de cinema para preencher dados iniciais!
-                </div>
+                    <strong>Gaveta de LPs:</strong> cada faixa precisa de <b>Faixa</b>, <b>Artista</b>, <b>Disco</b> e <b>Nº da faixa</b>. Os discos são separados pelo nome do Disco, então nomeie cada disco (ex.: A Kind of Magic, The Works). O JSON só é exportado com tudo preenchido.</div>
             </div>
 
             <div class="series-bulk-apply">
                 <div class="series-bulk-row">
                     <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                        <label for="bulk-series-name">Nome da Série (aplica às linhas marcadas ✓ abaixo)</label>
-                        <input type="text" id="bulk-series-name" class="form-control" placeholder="Ex: Nome da Série">
+                        <label for="bulk-series-name">Nome do Disco (aplica às linhas marcadas ✓ abaixo)</label>
+                        <input type="text" id="bulk-series-name" class="form-control" placeholder="Ex: The Works">
                     </div>
-                    <div class="form-group" style="min-width: 170px; margin-bottom: 0;">
+                    <div class="form-group" style="min-width: 170px; margin-bottom: 0; display: none;">
                         <label for="bulk-display-category">Exibir na lista de</label>
                         <select id="bulk-display-category" class="form-control table-select">
                             <option value="series">Séries (padrão)</option>
@@ -618,10 +619,10 @@
                         <span>Aplicar às marcadas e numerar em ordem</span>
                     </button>
                 </div>
-                <span class="input-hint">Marca as linhas selecionadas como "Série", preenche o nome e numera 1, 2, 3... em ordem. Use "Exibir na lista de" para escolher em qual categoria a série vai aparecer no TubeFlix — por exemplo, importar uma série mas exibi-la na lista de Filmes. Repita para cada série separadamente se houver mais de uma misturada.</span>
+                <span class="input-hint">Preenche o nome do disco e numera as faixas 1, 2, 3... em ordem nas linhas marcadas. Marque só as faixas de um disco, aplique, desmarque, e repita para o próximo disco.</span>
                 <div id="duplicate-order-warning" class="duplicate-order-warning hidden">
                     <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
-                    Existem vídeos da mesma série com o mesmo número de ordem (destacados em vermelho na tabela). Ajuste para que cada capítulo tenha um número único antes de exportar.
+                    Existem faixas do mesmo disco com o mesmo número de ordem (destacados em vermelho na tabela). Ajuste para que cada faixa do disco tenha um número único antes de exportar.
                 </div>
             </div>
 
@@ -633,13 +634,13 @@
                                 <input type="checkbox" id="select-all-rows" checked title="Selecionar/desmarcar todos">
                             </th>
                             <th style="width: 90px;">Capa</th>
-                            <th>Título</th>
-                            <th style="width: 150px;">Categoria</th>
-                            <th style="width: 110px;">Classificação</th>
+                            <th>Faixa</th>
+                            <th class="col-hide">Categoria</th>
+                            <th class="col-hide">Classificação</th>
                             <th style="width: 110px;">Duração</th>
-                            <th style="width: 150px;">Canal</th>
-                            <th style="width: 150px;">Nome da Série</th>
-                            <th style="width: 90px;">Ordem</th>
+                            <th style="width: 150px;">Artista</th>
+                            <th style="width: 170px;">Disco</th>
+                            <th style="width: 90px;">Nº faixa</th>
                             <th style="width: 50px; text-align: center;">Excluir</th>
                         </tr>
                     </thead>
@@ -750,6 +751,8 @@
 
             // Bloqueia a exportação se houver números de ordem duplicados dentro da mesma série
             // (cada capítulo precisa de um número único e sequencial)
+            const missingMsg = validateLpRows();
+            if (missingMsg) { alert(missingMsg); return; }
             checkForDuplicateOrders();
             const hasDuplicateOrders = videosTbody.querySelector('.input-duplicate') !== null;
             if (hasDuplicateOrders) {
@@ -779,38 +782,16 @@
                 const newEpisodeOrderRaw = row.querySelector('.col-episode-order').value;
                 const newEpisodeOrder = (newEpisodeOrderRaw !== '') ? parseFloat(newEpisodeOrderRaw) : null;
 
-                // Recriar ficha técnica se a categoria ou título mudaram
-                const customDetails = generateSmartDetails(newTitle, newChannel, newCategory);
-
-                // displayCategory: lido do atributo data-display-category gravado pelo "Aplicar em lote"
-                // Só é incluído quando diferente da categoria real (evita campo desnecessário no JSON)
-                const rowDisplayCat = row.dataset.displayCategory || '';
-                const exportDisplayCat = (rowDisplayCat && rowDisplayCat !== newCategory) ? rowDisplayCat : undefined;
-
                 const exportEntry = {
-                    id: `yt_${video.videoId}_${Date.now()}_${originalIdx}`,
-                    url: video.url,
                     videoId: video.videoId,
+                    url: video.url,
                     title: newTitle,
-                    category: newCategory,
-                    rating: newRating,
-                    duration: newDuration,
-                    year: video.year,
-                    director: newChannel,
-                    cast: customDetails.cast, // Elenco gerado cinemático
-                    description: customDetails.description,
-                    imageUrl: video.imageUrl,
-                    imagePosX: 50,
-                    imagePosY: 50,
-                    imageZoom: 85,
-                    featured: false,
-                    seriesName: newSeriesName,
+                    album: newSeriesName,
+                    artist: newChannel,
                     episodeOrder: newEpisodeOrder,
-                    album: newSeriesName,   // LP da gaveta (= nome da série)
-                    artist: newChannel,     // artista do LP (= canal)
-                    createdAt: new Date().getTime() + originalIdx // incrementa para manter ordem de inserção
+                    duration: newDuration,
+                    imageUrl: video.imageUrl
                 };
-                if (exportDisplayCat) exportEntry.displayCategory = exportDisplayCat;
                 finalVideos.push(exportEntry);
             });
 
@@ -818,12 +799,34 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalVideos, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `tubeflix_playlist_import.json`);
+            downloadAnchor.setAttribute("download", `gaveta_playlist.json`);
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
 
-            alert(`${finalVideos.length} vídeos foram exportados com sucesso! Vá até o site do TubeFlix, abra o Painel Admin e clique em 'Importar' para cadastrá-los.`);
+            alert(`${finalVideos.length} faixas exportadas! Na gaveta, entre como Admin e use "Importar JSON da playlist".`);
+        });
+
+        // Exige faixa, artista, disco e nº da faixa em todas as linhas; destaca em vermelho o que falta
+        function validateLpRows() {
+            const rows = Array.from(videosTbody.querySelectorAll('tr'));
+            if (!rows.length) return 'Não há faixas para exportar.';
+            const names = { '.col-title': 'sem nome de faixa', '.col-channel': 'sem artista', '.col-series-name': 'sem disco', '.col-episode-order': 'sem número de faixa' };
+            const count = {}; let first = null;
+            rows.forEach(row => {
+                Object.keys(names).forEach(sel => {
+                    const el = row.querySelector(sel);
+                    const bad = !el.value.trim() || (sel === '.col-episode-order' && !(parseInt(el.value, 10) > 0));
+                    el.classList.toggle('input-missing', bad);
+                    if (bad) { count[sel] = (count[sel] || 0) + 1; first = first || el; }
+                });
+            });
+            if (!first) return '';
+            first.scrollIntoView({ block: 'center' }); first.focus();
+            return 'Não dá para exportar: faltam informações.\n\n' + Object.keys(count).map(sel => '• ' + count[sel] + ' faixa(s) ' + names[sel]).join('\n') + '\n\nOs campos vazios estão destacados em vermelho.';
+        }
+        videosTbody.addEventListener('input', (e) => {
+            if (e.target.classList.contains('input-missing') && e.target.value.trim()) e.target.classList.remove('input-missing');
         });
 
         // 1. Extração do ID da Playlist
@@ -1179,9 +1182,9 @@
                         <img src="${video.imageUrl}" alt="capa" class="table-thumb" onerror="this.src='https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg'">
                     </td>
                     <td>
-                        <input type="text" class="table-input col-title" value="${escapeHtml(video.title)}">
+                        <input type="text" class="table-input col-title" placeholder="Faixa" value="${escapeHtml(video.title)}">
                     </td>
-                    <td>
+                    <td class="col-hide">
                         <select class="table-select col-category">
                             <option value="filmes" ${video.category === 'filmes' ? 'selected' : ''}>Filme</option>
                             <option value="series" ${video.category === 'series' ? 'selected' : ''}>Série</option>
@@ -1189,7 +1192,7 @@
                             <option value="tutoriais" ${video.category === 'tutoriais' ? 'selected' : ''}>Tech / Tutorial</option>
                         </select>
                     </td>
-                    <td>
+                    <td class="col-hide">
                         <select class="table-select col-rating">
                             <option value="L" ${video.rating === 'L' ? 'selected' : ''}>Livre (L)</option>
                             <option value="10" ${video.rating === '10' ? 'selected' : ''}>10+</option>
@@ -1203,10 +1206,10 @@
                         <input type="text" class="table-input col-duration" value="${escapeHtml(video.duration)}">
                     </td>
                     <td>
-                        <input type="text" class="table-input col-channel" value="${escapeHtml(video.director)}">
+                        <input type="text" class="table-input col-channel" placeholder="Artista" value="${escapeHtml(String(video.director || '').replace(/\s*-\s*Topic$/i, ''))}">
                     </td>
                     <td>
-                        <input type="text" class="table-input col-series-name" placeholder="Ex: Nome da Série" value="${escapeHtml(video.seriesName || '')}">
+                        <input type="text" class="table-input col-series-name" placeholder="Nome do disco" value="${escapeHtml(video.seriesName || '')}">
                     </td>
                     <td>
                         <input type="text" inputmode="numeric" pattern="[0-9]*" class="table-input col-episode-order" value="${(video.episodeOrder != null) ? video.episodeOrder : ''}">
