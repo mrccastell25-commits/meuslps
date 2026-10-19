@@ -605,6 +605,10 @@
                         <label for="bulk-series-name">Nome do Disco (aplica às linhas marcadas ✓ abaixo)</label>
                         <input type="text" id="bulk-series-name" class="form-control" placeholder="Ex: The Works">
                     </div>
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label for="bulk-cover-url">URL da capa do disco (opcional)</label>
+                        <input type="text" id="bulk-cover-url" class="form-control" placeholder="https://... (vazio = usa a imagem da playlist)">
+                    </div>
                     <div class="form-group" style="min-width: 170px; margin-bottom: 0; display: none;">
                         <label for="bulk-display-category">Exibir na lista de</label>
                         <select id="bulk-display-category" class="form-control table-select">
@@ -792,6 +796,7 @@
                     duration: newDuration,
                     imageUrl: video.imageUrl
                 };
+                if (row.dataset.coverUrl) exportEntry.cover = row.dataset.coverUrl;
                 finalVideos.push(exportEntry);
             });
 
@@ -1294,7 +1299,17 @@
 
                 const bulkDisplayCat = document.getElementById('bulk-display-category')?.value || 'series';
 
+                const coverUrl = (document.getElementById('bulk-cover-url')?.value || '').trim();
+                if (coverUrl && !/^https?:\/\//i.test(coverUrl)) {
+                    alert('A URL da capa deve começar com http:// ou https:// (ou deixe vazia para usar a imagem da playlist).');
+                    return;
+                }
+
                 selectedRows.forEach((row, position) => {
+                    if (coverUrl) row.dataset.coverUrl = coverUrl; else delete row.dataset.coverUrl;
+                    const thumb = row.querySelector('.table-thumb');
+                    const vid = extractedVideos[parseInt(row.id.replace('row-video-', ''), 10)];
+                    if (thumb && vid) thumb.src = coverUrl || vid.imageUrl;
                     row.querySelector('.col-series-name').value = seriesName;
                     row.querySelector('.col-episode-order').value = position + 1;
                     row.querySelector('.col-category').value = 'series';

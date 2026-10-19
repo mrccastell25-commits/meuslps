@@ -230,7 +230,7 @@
   .l2bar::before{content:"";position:absolute;inset:-12px 0}
   .l2bar i{position:absolute;left:0;top:0;bottom:0;width:0;pointer-events:none;background:repeating-linear-gradient(90deg,#6dff9a 0 6px,transparent 6px 9px)}
   .l2led{position:absolute;right:16px;top:12px;width:14px;height:14px;border-radius:2px;background:#3a0f0b}
-  .l2led.on{background:#ff3a2a;box-shadow:0 0 10px #ff3a2a}
+  .l2led.on{background:#3a0f0b}
   .hknob{left:1550px;top:446px;width:144px;height:144px;border-radius:50%;touch-action:none;cursor:grab;outline:none;
     background:repeating-conic-gradient(from 0deg,#34343a 0 2.5deg,#17171a 2.5deg 5deg);
     box-shadow:0 8px 14px rgba(0,0,0,.65),inset 0 0 0 2px rgba(255,255,255,.12)}
@@ -438,6 +438,7 @@
     <h2 id="sTitle">Monte a gaveta</h2>
     <input class="txt" id="nameBox" type="text" maxlength="28" placeholder="Nome da gaveta (ex.: Rock dos anos 80)" aria-label="Nome da gaveta" autocomplete="off">
     <div class="actions"><a class="ctl" id="openGen" href="playlist.html" target="_blank" rel="noopener">1. Abrir gerador de playlist</a><button class="ctl main" id="importJson" type="button">2. Importar JSON da playlist</button><input id="jsonFile" type="file" accept=".json,application/json" hidden></div>
+    <input id="jAlbum" type="text" maxlength="60" placeholder="Nome do disco (para JSON sem disco, ex.: The Works)" style="width:100%;box-sizing:border-box;margin:6px 0;padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:transparent;color:inherit;font:inherit">
     <label style="display:block;font-size:13px;margin:6px 0;opacity:.85"><input type="checkbox" id="repl"> Substituir o conteúdo da gaveta (por padrão os LPs são adicionados aos que já estão nela)</label>
     <p class="err" id="jMsg" role="status" style="color:inherit;opacity:.8">No gerador, carregue a playlist, ajuste nome do disco (série) e ordem, exporte o JSON e volte aqui para importar.</p>
     <ol>
@@ -486,14 +487,14 @@
     var albums = [], map = {}, seen = {};
     text.split(/\r?\n/).forEach(function(line){
       line = line.trim(); if(!line) return;
-      var m = line.match(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/), id = m ? m[1] : null;
+      var rx = /(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{11})/g, m, id = null; while((m = rx.exec(line))) id = m[1];   // vale o último (o link vem no fim da linha)
       if(!id){ var b = line.match(/(?:^|\|\s*)([A-Za-z0-9_-]{11})\s*$/); if(b) id = b[1]; }
       if(!id || seen[id]) return;
       seen[id] = 1;
       var parts = (line.indexOf('\t') >= 0 ? line.split('\t') : line.split('|')).map(function(s){ return s.trim(); });
       for(var k = 0; k < parts.length; k++){ if(parts[k].indexOf(id) !== -1){ parts.splice(k, 1); break; } }
-      var album = '', title, artist = '';
-      if(parts.length >= 3){ album = parts[0]; title = parts[1]; artist = parts[2]; }
+      var album = '', title, artist = '', cov = '';
+      if(parts.length >= 3){ album = parts[0]; title = parts[1]; artist = parts[2]; if(/^https?:\/\//i.test(parts[3] || '')) cov = parts[3].replace(/[()'\"\s]/g, function(c){ return '%' + c.charCodeAt(0).toString(16).toUpperCase(); }); }
       else {
         title = parts[0] || ''; artist = parts[1] || '';
         if(!artist){ var sp = title.split(' - '); if(sp.length > 1){ artist = sp[0]; title = sp.slice(1).join(' - '); } }
@@ -508,10 +509,11 @@
           id: id, title: album || artist || 'Coleção', artist: artist, tracks: [],
           art: KINDS[hash(key + 'k') % 8],
           p: ['hsl('+h+',50%,42%)','hsl('+((h+35)%360)+',75%,62%)','hsl('+((h+190)%360)+',45%,28%)','hsl('+((h+80)%360)+',80%,80%)','#fff'],
-          photo: null, tried: false
+          photo: cov ? {url: cov, size: 'cover'} : null, tried: !!cov
         };
         albums.push(al);
       }
+      if(cov && !al.cover){ al.cover = cov; al.photo = {url: cov, size: 'cover'}; al.tried = true; }
       al.tracks.push({id: id, title: title});
     });
     return albums;
@@ -1099,8 +1101,6 @@
       + '<path d="M92 178 Q150 108 208 178" fill="none" stroke="#fff" stroke-opacity=".14"/>'
       + '<rect x="12" y="12" width="276" height="166" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="10" filter="url(#'+p+'i)"/>'
       + '<path d="M12 12 H288 V62 Q150 98 12 54 Z" fill="url(#'+p+'g)"/>'
-      + '<circle cx="268" cy="'+(face?46:30)+'" r="9" fill="#ff3b2a" opacity="0" id="'+p+'k" filter="url(#'+p+'o)"/>'
-      + '<circle cx="268" cy="'+(face?46:30)+'" r="3.6" fill="#3a0d09"/><circle id="'+p+'q" cx="268" cy="'+(face?46:30)+'" r="3.6" fill="#ff6a56" opacity="0"/>'
       + '</g>'
       + (face ? [] : [[6,6],[294,6],[6,184],[294,184]]).map(function(c){ return '<circle cx="'+c[0]+'" cy="'+c[1]+'" r="2.8" fill="url(#'+p+'m)" stroke="#000" stroke-opacity=".5" stroke-width=".5"/><line x1="'+(c[0]-1.8)+'" y1="'+(c[1]+1.2)+'" x2="'+(c[0]+1.8)+'" y2="'+(c[1]-1.2)+'" stroke="#222" stroke-width=".7"/>'; }).join('')
       + '</svg>';
@@ -1140,7 +1140,6 @@
         var e = sets[q]; if(!e) continue;
         e.n.setAttribute('transform', tr); e.h.setAttribute('transform', tr);
         e.l.setAttribute('opacity', (0.08 + 0.2*clamp(m.x, 0, 1)).toFixed(3));
-        e.k.setAttribute('opacity', (m.led*0.9).toFixed(2)); e.q.setAttribute('opacity', m.led.toFixed(2));
       }
     }
     var lv = clamp((vuState[0].x + vuState[1].x)/2, 0, 1);
@@ -1631,14 +1630,14 @@
   });
 
   /* ---------- importar o JSON exportado pelo playlist.html (cada série/álbum vira um LP) ---------- */
-  function jsonToLines(data){
+  function jsonToLines(data, defAlbum){
     var arr = Array.isArray(data) ? data : (data && (data.videos || data.items || data.tracks)) || [];
     var clean = function(v){ return String(v == null ? '' : v).replace(/[|\r\n\t]+/g, ' ').trim(); };
     var items = [], cnt = {};
     arr.forEach(function(v, k){
       var id = v && (v.videoId || ((String(v.url || '').match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/) || [])[1]));
       if(!id) return;
-      var it = {id: id, k: k, album: clean(v.album || v.seriesName), title: clean(v.title) || 'Faixa', artist: clean(v.artist || v.director), o: parseFloat(v.episodeOrder), cand: ''};
+      var it = {id: id, k: k, album: clean(v.album || v.seriesName) || clean(defAlbum), title: clean(v.title) || 'Faixa', artist: clean(v.artist || v.director), o: parseFloat(v.episodeOrder), cand: '', cover: /^https?:\/\//i.test(String(v.cover || '').trim()) ? clean(v.cover) : ''};
       if(!it.album){   // sem disco: "Faixa - Banda – Disco ... Vinyl Album Rip" -> o trecho depois do 1º " - " identifica o disco
         var m = it.title.match(/^(.+?)\s+-\s+(.{6,})$/);
         if(m){ it.cand = m[2]; it.track = m[1]; var c = m[2].toLowerCase(); cnt[c] = (cnt[c] || 0) + 1; }
@@ -1655,7 +1654,7 @@
       }
       var key = it.album.toLowerCase(); if(!(key in order)) order[key] = n++;
       it.g = order[key]; if(isNaN(it.o)) it.o = 1e9;
-      it.line = [it.album, it.title, it.artist, 'https://youtu.be/' + it.id].join(' | ');
+      it.line = [it.album, it.title, it.artist].concat(it.cover ? [it.cover] : [], ['https://youtu.be/' + it.id]).join(' | ');
     });
     items.sort(function(a, b){ return a.g - b.g || a.o - b.o || a.k - b.k; });
     return items.map(function(x){ return x.line; });
@@ -1666,7 +1665,7 @@
     var r = new FileReader();
     r.onload = function(){
       try{
-        var lines = jsonToLines(JSON.parse(r.result));
+        var lines = jsonToLines(JSON.parse(r.result), $('jAlbum').value);
         if(!lines.length){ msg.textContent = 'Esse JSON não tem nenhum vídeo do YouTube.'; return; }
         var stats = function(t){ var l = parseList(t); return {a: l.length, t: l.reduce(function(n, x){ return n + x.tracks.length; }, 0)}; };
         var cur = listBox.value.trim(), repl = $('repl').checked || !cur;
@@ -1676,6 +1675,9 @@
         if(!nameBox.value.trim()){ var first = lines[0].split(' | ')[0]; if(first) nameBox.value = first.slice(0, 28); }
         msg.textContent = dT ? ('+' + dA + (dA === 1 ? ' LP' : ' LPs') + ' e ' + dT + (dT === 1 ? ' faixa' : ' faixas') + (repl ? '' : ' adicionados') + '. A gaveta terá ' + f.a + (f.a === 1 ? ' disco' : ' discos') + '. Clique em “Montar gaveta” para salvar.')
                     : 'Nada novo: essas faixas já estão na gaveta.';
+        var semDisco = lines.filter(function(l){ return /^\s*\|/.test(l); }).length;
+        if(dT && semDisco) msg.textContent += ' Atenção: ' + semDisco + ' faixas vieram sem nome de disco e foram agrupadas pelo artista. Para separar discos do mesmo artista, preencha “Nome do disco” e importe um JSON por vez.';
+        $('jAlbum').value = '';
         sErr.textContent = '';
       }catch(e){ msg.textContent = 'Arquivo inválido: não consegui ler o JSON.'; }
       inp.value = '';
