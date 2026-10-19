@@ -436,6 +436,7 @@
     <h2 id="sTitle">Monte a gaveta</h2>
     <input class="txt" id="nameBox" type="text" maxlength="28" placeholder="Nome da gaveta (ex.: Rock dos anos 80)" aria-label="Nome da gaveta" autocomplete="off">
     <div class="actions"><a class="ctl" id="openGen" href="playlist.html" target="_blank" rel="noopener">1. Abrir gerador de playlist</a><button class="ctl main" id="importJson" type="button">2. Importar JSON da playlist</button><input id="jsonFile" type="file" accept=".json,application/json" hidden></div>
+    <label style="display:block;font-size:13px;margin:6px 0;opacity:.85"><input type="checkbox" id="repl"> Substituir o conteúdo da gaveta (por padrão os LPs são adicionados aos que já estão nela)</label>
     <p class="err" id="jMsg" role="status" style="color:inherit;opacity:.8">No gerador, carregue a playlist, ajuste nome do disco (série) e ordem, exporte o JSON e volte aqui para importar.</p>
     <ol>
       <li>Abra a playlist no <a id="plLink" href="https://www.youtube.com/playlist?list=PLFYb-tSsq-vl97wk2Rs1vSR4ADwy7TA4e" target="_blank" rel="noopener">YouTube comum</a> ou no <a href="https://music.youtube.com" target="_blank" rel="noopener">YouTube Music</a> (que também traz o nome do disco). Use o código do mesmo site em que abriu a playlist.</li>
@@ -1527,7 +1528,7 @@
 
   /* ---------- painel da lista (por gaveta) ---------- */
   function showSetup(){
-    opened = true; modal = 'setup'; sErr.textContent = '';
+    opened = true; modal = 'setup'; sErr.textContent = ''; $('repl').checked = false;
     $('sClear').style.display = saved[editing] && saved[editing].text.trim() ? '' : 'none';
     setup.hidden = false;
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ setup.classList.add('open'); }); });
@@ -1572,10 +1573,14 @@
       try{
         var lines = jsonToLines(JSON.parse(r.result));
         if(!lines.length){ msg.textContent = 'Esse JSON não tem nenhum vídeo do YouTube.'; return; }
-        listBox.value = lines.join('\n');
+        var stats = function(t){ var l = parseList(t); return {a: l.length, t: l.reduce(function(n, x){ return n + x.tracks.length; }, 0)}; };
+        var cur = listBox.value.trim(), repl = $('repl').checked || !cur;
+        var b = repl ? {a: 0, t: 0} : stats(cur);
+        listBox.value = repl ? lines.join('\n') : cur + '\n' + lines.join('\n');
+        var f = stats(listBox.value), dA = f.a - b.a, dT = f.t - b.t;
         if(!nameBox.value.trim()){ var first = lines[0].split(' | ')[0]; if(first) nameBox.value = first.slice(0, 28); }
-        var d = parseList(listBox.value).length;
-        msg.textContent = lines.length + ' faixas lidas, ' + d + (d === 1 ? ' disco' : ' discos') + '. Clique em “Montar gaveta” para salvar.';
+        msg.textContent = dT ? ('+' + dA + (dA === 1 ? ' LP' : ' LPs') + ' e ' + dT + (dT === 1 ? ' faixa' : ' faixas') + (repl ? '' : ' adicionados') + '. A gaveta terá ' + f.a + (f.a === 1 ? ' disco' : ' discos') + '. Clique em “Montar gaveta” para salvar.')
+                    : 'Nada novo: essas faixas já estão na gaveta.';
         sErr.textContent = '';
       }catch(e){ msg.textContent = 'Arquivo inválido: não consegui ler o JSON.'; }
       inp.value = '';
