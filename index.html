@@ -435,8 +435,8 @@
   <div class="panel">
     <h2 id="sTitle">Monte a gaveta</h2>
     <input class="txt" id="nameBox" type="text" maxlength="28" placeholder="Nome da gaveta (ex.: Rock dos anos 80)" aria-label="Nome da gaveta" autocomplete="off">
-    <div class="actions"><button class="ctl main" id="importJson" type="button">Importar JSON da playlist</button><input id="jsonFile" type="file" accept=".json,application/json" hidden></div>
-    <p class="err" id="jMsg" role="status" style="color:inherit;opacity:.8"></p>
+    <div class="actions"><a class="ctl" id="openGen" href="playlist.html" target="_blank" rel="noopener">1. Abrir gerador de playlist</a><button class="ctl main" id="importJson" type="button">2. Importar JSON da playlist</button><input id="jsonFile" type="file" accept=".json,application/json" hidden></div>
+    <p class="err" id="jMsg" role="status" style="color:inherit;opacity:.8">No gerador, carregue a playlist, ajuste nome do disco (série) e ordem, exporte o JSON e volte aqui para importar.</p>
     <ol>
       <li>Abra a playlist no <a id="plLink" href="https://www.youtube.com/playlist?list=PLFYb-tSsq-vl97wk2Rs1vSR4ADwy7TA4e" target="_blank" rel="noopener">YouTube comum</a> ou no <a href="https://music.youtube.com" target="_blank" rel="noopener">YouTube Music</a> (que também traz o nome do disco). Use o código do mesmo site em que abriu a playlist.</li>
       <li>Aperte F12, abra a aba Console, cole o código e tecle Enter. Se o navegador pedir, digite <b>allow pasting</b> antes. O código rola a página sozinho para carregar tudo; espere aparecer “N faixas copiadas”.</li>
@@ -1527,7 +1527,7 @@
 
   /* ---------- painel da lista (por gaveta) ---------- */
   function showSetup(){
-    opened = true; modal = 'setup'; sErr.textContent = ''; $('jMsg').textContent = '';
+    opened = true; modal = 'setup'; sErr.textContent = '';
     $('sClear').style.display = saved[editing] && saved[editing].text.trim() ? '' : 'none';
     setup.hidden = false;
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ setup.classList.add('open'); }); });
