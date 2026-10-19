@@ -435,6 +435,8 @@
   <div class="panel">
     <h2 id="sTitle">Monte a gaveta</h2>
     <input class="txt" id="nameBox" type="text" maxlength="28" placeholder="Nome da gaveta (ex.: Rock dos anos 80)" aria-label="Nome da gaveta" autocomplete="off">
+    <div class="actions"><button class="ctl main" id="importJson" type="button">Importar JSON da playlist</button><input id="jsonFile" type="file" accept=".json,application/json" hidden></div>
+    <p class="err" id="jMsg" role="status" style="color:inherit;opacity:.8"></p>
     <ol>
       <li>Abra a playlist no <a id="plLink" href="https://www.youtube.com/playlist?list=PLFYb-tSsq-vl97wk2Rs1vSR4ADwy7TA4e" target="_blank" rel="noopener">YouTube comum</a> ou no <a href="https://music.youtube.com" target="_blank" rel="noopener">YouTube Music</a> (que também traz o nome do disco). Use o código do mesmo site em que abriu a playlist.</li>
       <li>Aperte F12, abra a aba Console, cole o código e tecle Enter. Se o navegador pedir, digite <b>allow pasting</b> antes. O código rola a página sozinho para carregar tudo; espere aparecer “N faixas copiadas”.</li>
@@ -1363,14 +1365,39 @@
   /* ---------- loja: 10 gavetas, cada uma com a sua lista ---------- */
   var NDRAW = 10, saved = [], curDrawer = -1, editing = -1;
   var shop = $('shop'), cabinet = $('cabinet'), nameBox = $('nameBox'), brandTitle = $('brandTitle');
+  /* ---------- Firebase (Firestore): um documento por gaveta em gaveta_loja/{0..9} ---------- */
+  var FIREBASE_CONFIG = { apiKey:'', authDomain:'', projectId:'', appId:'' }; // <- cole aqui a config do seu projeto
+  var FB_COL = 'gaveta_loja', fbDb = null, fbApi = null;
+  function emptyDrawers(){ var a = []; for(var i = 0; i < NDRAW; i++) a.push({name:'', text:''}); return a; }
   function loadDrawers(){
     var raw = null;
-    try{ raw = JSON.parse(localStorage.getItem('gaveta:loja') || 'null'); }catch(e){}
-    saved = [];
-    for(var i = 0; i < NDRAW; i++){ var r = (raw && raw[i]) || {}; saved.push({name: String(r.name || ''), text: String(r.text || '')}); }
-    if(!raw){ try{ var old = localStorage.getItem('gaveta:lista'); if(old) saved[0].text = old; }catch(e){} }
+    try{ raw = JSON.parse(localStorage.getItem('gaveta:loja') || 'null'); }catch(e){}   // cache local
+    saved = emptyDrawers();
+    for(var i = 0; i < NDRAW; i++){ var r = (raw && raw[i]) || {}; saved[i] = {name: String(r.name || ''), text: String(r.text || '')}; }
   }
-  function saveDrawers(){ try{ localStorage.setItem('gaveta:loja', JSON.stringify(saved)); }catch(e){} }
+  function cacheDrawers(){ try{ localStorage.setItem('gaveta:loja', JSON.stringify(saved)); }catch(e){} }
+  function saveDrawers(i){
+    cacheDrawers();
+    if(!fbDb) return;
+    var idx = (typeof i === 'number') ? [i] : saved.map(function(_, k){ return k; });
+    idx.forEach(function(k){
+      fbApi.setDoc(fbApi.doc(fbDb, FB_COL, String(k)), {name: saved[k].name, text: saved[k].text, updatedAt: Date.now()})
+        .catch(function(e){ console.error('Firebase: falha ao salvar a gaveta ' + (k+1), e); });
+    });
+  }
+  function initFirebase(){
+    if(!FIREBASE_CONFIG.projectId) return;   // sem config: segue só com o cache local
+    var base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+    Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]).then(function(m){
+      fbApi = m[1]; fbDb = fbApi.getFirestore(m[0].initializeApp(FIREBASE_CONFIG));
+      return fbApi.getDocs(fbApi.collection(fbDb, FB_COL));
+    }).then(function(snap){
+      snap.forEach(function(d){
+        var k = +d.id, v = d.data(); if(k >= 0 && k < NDRAW) saved[k] = {name: String(v.name || ''), text: String(v.text || '')};
+      });
+      cacheDrawers(); if(curDrawer < 0 && !shop.hidden) renderShop();
+    }).catch(function(e){ console.error('Firebase: falha ao carregar as gavetas', e); });
+  }
   function fixedOf(i){ return DRAWERS[i] || {}; }
   function drawerText(i){ return (fixedOf(i).text || '').trim() || saved[i].text.trim(); }
   function drawerName(i){ return (fixedOf(i).name || '').trim() || saved[i].name.trim() || ('Gaveta ' + (i+1)); }
@@ -1487,7 +1514,7 @@
 
   /* ---------- painel da lista (por gaveta) ---------- */
   function showSetup(){
-    opened = true; modal = 'setup'; sErr.textContent = '';
+    opened = true; modal = 'setup'; sErr.textContent = ''; $('jMsg').textContent = '';
     $('sClear').style.display = saved[editing] && saved[editing].text.trim() ? '' : 'none';
     setup.hidden = false;
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ setup.classList.add('open'); }); });
@@ -1498,19 +1525,55 @@
   }
   $('sCancel').addEventListener('click', hideSetup);
   $('sClear').addEventListener('click', function(){
-    saved[editing] = {name:'', text:''}; saveDrawers();
+    saved[editing] = {name:'', text:''}; saveDrawers(editing);
     hideSetup(); showShop();
   });
   $('sGo').addEventListener('click', function(){
     var text = listBox.value, list = parseList(text);
     if(!list.length){ sErr.textContent = 'Não encontrei nenhum link de vídeo do YouTube nessa lista.'; return; }
-    saved[editing] = {name: nameBox.value.trim(), text: text}; saveDrawers();
+    saved[editing] = {name: nameBox.value.trim(), text: text}; saveDrawers(editing);
     hideSetup(); enterDrawer(editing);
+  });
+
+  /* ---------- importar o JSON exportado pelo playlist.html (cada série/álbum vira um LP) ---------- */
+  function jsonToLines(data){
+    var arr = Array.isArray(data) ? data : (data && (data.videos || data.items || data.tracks)) || [];
+    var clean = function(v){ return String(v == null ? '' : v).replace(/[|\r\n\t]+/g, ' ').trim(); };
+    var order = {}, n = 0, items = [];
+    arr.forEach(function(v, k){
+      var id = v && (v.videoId || ((String(v.url || '').match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/) || [])[1]));
+      if(!id) return;
+      var album = clean(v.album || v.seriesName), artist = clean(v.artist || v.director);
+      var key = album.toLowerCase(); if(!(key in order)) order[key] = n++;
+      var eo = parseFloat(v.episodeOrder);
+      items.push({g: order[key], o: isNaN(eo) ? 1e9 : eo, k: k, line: [album, clean(v.title) || 'Faixa', artist, 'https://youtu.be/' + id].join(' | ')});
+    });
+    items.sort(function(a, b){ return a.g - b.g || a.o - b.o || a.k - b.k; });
+    return items.map(function(x){ return x.line; });
+  }
+  $('importJson').addEventListener('click', function(){ $('jsonFile').click(); });
+  $('jsonFile').addEventListener('change', function(){
+    var f = this.files && this.files[0], inp = this, msg = $('jMsg'); if(!f) return;
+    var r = new FileReader();
+    r.onload = function(){
+      try{
+        var lines = jsonToLines(JSON.parse(r.result));
+        if(!lines.length){ msg.textContent = 'Esse JSON não tem nenhum vídeo do YouTube.'; return; }
+        listBox.value = lines.join('\n');
+        if(!nameBox.value.trim()){ var first = lines[0].split(' | ')[0]; if(first) nameBox.value = first.slice(0, 28); }
+        var d = parseList(listBox.value).length;
+        msg.textContent = lines.length + ' faixas lidas, ' + d + (d === 1 ? ' disco' : ' discos') + '. Clique em “Montar gaveta” para salvar.';
+        sErr.textContent = '';
+      }catch(e){ msg.textContent = 'Arquivo inválido: não consegui ler o JSON.'; }
+      inp.value = '';
+    };
+    r.readAsText(f);
   });
 
   /* ---------- início ---------- */
   loadDrawers();
   showShop();
+  initFirebase();
 
   /* ---------- abertura em vídeo ---------- */
   var intro = $('intro'), iv = $('introVideo');
