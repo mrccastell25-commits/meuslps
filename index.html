@@ -325,6 +325,8 @@
       <span id="count" aria-hidden="true"></span>
       <button class="pill" id="backShop" type="button" hidden>Loja</button>
       <button class="pill" id="editList" type="button" hidden>Trocar lista</button>
+      <button class="pill" id="adminBtn" type="button">Admin</button>
+      <button class="pill" id="pwBtn" type="button" style="display:none">Trocar senha</button>
       <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado"></button>
     </div>
   </header>
@@ -1392,7 +1394,64 @@
     for(var i = 0; i < NDRAW; i++){ var r = (raw && raw[i]) || {}; saved[i] = {name: String(r.name || ''), text: String(r.text || '')}; }
   }
   function cacheDrawers(){ try{ localStorage.setItem('gaveta:loja', JSON.stringify(saved)); }catch(e){} }
-  var fbReady = null;
+  var fbReady = null, isAdmin = false;
+  /* ---------- admin simples: senha inicial 123, trocável; guarda só o hash em gaveta_admin/hash ---------- */
+  var ADMIN_DEFAULT = '123', ADMIN_PATH = 'gaveta_admin/hash';
+  function sha(t){
+    if(!(window.crypto && crypto.subtle)) return Promise.resolve('p:' + t);
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode('gaveta:' + t)).then(function(b){
+      return Array.from(new Uint8Array(b)).map(function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+    });
+  }
+  function currentHash(){
+    if(!fbReady) return Promise.reject(new Error('Firebase indisponível'));
+    return fbReady.then(function(){ return fbDb.ref(ADMIN_PATH).once('value'); }).then(function(sn){ return sn.val() || sha(ADMIN_DEFAULT); });
+  }
+  function updateAdminUI(){
+    $('adminBtn').textContent = isAdmin ? 'Sair do admin' : 'Admin';
+    $('pwBtn').style.display = isAdmin ? '' : 'none';
+    $('editList').style.display = isAdmin ? '' : 'none';
+  }
+  function setAdmin(h){ isAdmin = true; try{ localStorage.setItem('gaveta:adm', h); }catch(e){} updateAdminUI(); }
+  function logoutAdmin(){ isAdmin = false; try{ localStorage.removeItem('gaveta:adm'); }catch(e){} updateAdminUI(); toast('Você saiu do admin.'); }
+  function restoreAdmin(){   // mantém o admin entre visitas, revalidando o hash no banco
+    var t = null; try{ t = localStorage.getItem('gaveta:adm'); }catch(e){}
+    if(!t) return;
+    currentHash().then(function(h){ if(h === t){ isAdmin = true; updateAdminUI(); } else { try{ localStorage.removeItem('gaveta:adm'); }catch(e){} } }).catch(function(){});
+  }
+  function openDlg(title, fields, okText, onOk){
+    var old = $('adminDlg'); if(old) old.remove();
+    var st = 'width:100%;box-sizing:border-box;margin:0 0 8px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:#111;color:#fff;font:inherit';
+    var d = document.createElement('dialog'); d.id = 'adminDlg';
+    d.style.cssText = 'border:1px solid rgba(255,255,255,.3);border-radius:14px;background:#1b1b1b;color:#fff;padding:18px;width:320px;max-width:92vw';
+    d.innerHTML = '<p style="margin:0 0 10px;font-weight:700">' + title + '</p>'
+      + fields.map(function(f, k){ return '<input data-k="' + k + '" type="password" autocomplete="' + (f.ac || 'off') + '" placeholder="' + f.ph + '" style="' + st + '">'; }).join('')
+      + '<p class="dErr" role="alert" style="margin:0 0 8px;font-size:13px;color:#ff8a80;min-height:1em"></p>'
+      + '<div class="actions"><button class="ctl dCancel" type="button">Cancelar</button><button class="ctl main dOk" type="button">' + okText + '</button></div>';
+    document.body.appendChild(d);
+    var err = d.querySelector('.dErr'), close = function(){ d.close(); d.remove(); };
+    var go = function(){ err.textContent = ''; onOk([].map.call(d.querySelectorAll('input'), function(i){ return i.value; }), function(m){ err.textContent = m; }, close); };
+    d.addEventListener('keydown', function(e){ e.stopPropagation(); if(e.key === 'Enter') go(); });
+    d.querySelector('.dCancel').addEventListener('click', close);
+    d.querySelector('.dOk').addEventListener('click', go);
+    d.showModal(); d.querySelector('input').focus();
+  }
+  $('adminBtn').addEventListener('click', function(){
+    if(isAdmin){ logoutAdmin(); return; }
+    openDlg('Entrar como admin', [{ph: 'Senha'}], 'Entrar', function(v, fail, close){
+      Promise.all([sha(v[0]), currentHash()]).then(function(r){
+        if(r[0] === r[1]){ setAdmin(r[0]); close(); toast('Admin ativado.'); } else fail('Senha incorreta.');
+      }).catch(function(){ fail('Não consegui verificar (Firebase indisponível).'); });
+    });
+  });
+  $('pwBtn').addEventListener('click', function(){
+    openDlg('Trocar senha do admin', [{ph: 'Nova senha'}, {ph: 'Repita a nova senha'}], 'Salvar', function(v, fail, close){
+      if(v[0].length < 3) return fail('Use pelo menos 3 caracteres.');
+      if(v[0] !== v[1]) return fail('As senhas não são iguais.');
+      sha(v[0]).then(function(h){ return fbDb.ref(ADMIN_PATH).set(h).then(function(){ setAdmin(h); close(); toast('Senha alterada.'); }); })
+        .catch(function(e){ fail('Não salvou (' + ((e && (e.code || e.message)) || e) + ').'); });
+    });
+  });
   function toast(msg, bad){
     var t = $('fbToast');
     if(!t){ t = document.createElement('div'); t.id = 'fbToast'; t.setAttribute('role', 'status');
@@ -1405,6 +1464,7 @@
     return new Promise(function(res, rej){ var t = document.createElement('script'); t.src = src; t.onload = res; t.onerror = function(){ rej(new Error('não carregou ' + src)); }; document.head.appendChild(t); });
   }
   function saveDrawers(i){
+    if(!isAdmin){ toast('Só o admin pode alterar as gavetas.', true); return; }
     cacheDrawers();
     if(!fbReady){ toast('Salvo só neste navegador: o Firebase não iniciou.', true); return; }
     var up = {};   // só a(s) gaveta(s) alterada(s); gaveta vazia remove o nó
@@ -1425,6 +1485,7 @@
       try{ firebase.appCheck().activate(new firebase.appCheck.ReCaptchaV3Provider(APPCHECK_KEY), true); }catch(e){ console.warn('App Check não ativado', e); }
       fbDb = firebase.database();
     });
+    fbReady.then(restoreAdmin).catch(function(){});
     fbReady.then(function(){ return fbDb.ref(FB_PATH).once('value'); }).then(function(snap){
       var v = snap.val(); if(!v) return;
       for(var k = 0; k < NDRAW; k++){ var d = v[k]; if(d) saved[k] = {name: String(d.name || ''), text: unpackText(d.text || '')}; }
@@ -1529,6 +1590,7 @@
     }, (already || reduceMotion) ? 0 : 700);
   }
   function startEdit(i){
+    if(!isAdmin){ toast('Gaveta vazia. Só o admin pode montar.'); return; }
     editing = i;
     $('sTitle').textContent = 'Gaveta ' + (i+1);
     nameBox.value = (fixedOf(i).name || '').trim() || saved[i].name;
@@ -1572,14 +1634,28 @@
   function jsonToLines(data){
     var arr = Array.isArray(data) ? data : (data && (data.videos || data.items || data.tracks)) || [];
     var clean = function(v){ return String(v == null ? '' : v).replace(/[|\r\n\t]+/g, ' ').trim(); };
-    var order = {}, n = 0, items = [];
+    var items = [], cnt = {};
     arr.forEach(function(v, k){
       var id = v && (v.videoId || ((String(v.url || '').match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/) || [])[1]));
       if(!id) return;
-      var album = clean(v.album || v.seriesName), artist = clean(v.artist || v.director);
-      var key = album.toLowerCase(); if(!(key in order)) order[key] = n++;
-      var eo = parseFloat(v.episodeOrder);
-      items.push({g: order[key], o: isNaN(eo) ? 1e9 : eo, k: k, line: [album, clean(v.title) || 'Faixa', artist, 'https://youtu.be/' + id].join(' | ')});
+      var it = {id: id, k: k, album: clean(v.album || v.seriesName), title: clean(v.title) || 'Faixa', artist: clean(v.artist || v.director), o: parseFloat(v.episodeOrder), cand: ''};
+      if(!it.album){   // sem disco: "Faixa - Banda – Disco ... Vinyl Album Rip" -> o trecho depois do 1º " - " identifica o disco
+        var m = it.title.match(/^(.+?)\s+-\s+(.{6,})$/);
+        if(m){ it.cand = m[2]; it.track = m[1]; var c = m[2].toLowerCase(); cnt[c] = (cnt[c] || 0) + 1; }
+      }
+      items.push(it);
+    });
+    var order = {}, n = 0;
+    items.forEach(function(it){
+      if(it.cand && cnt[it.cand.toLowerCase()] >= 2){   // só quando 2+ faixas compartilham o trecho
+        var al = it.cand.replace(/\s+(?:Original\s+)?(?:\d{4}\s+)?(?:Vintage\s+)?(?:Vinyl(?:\s+(?:Album|Record))?|Album|Record)\b.*$/i, '').trim() || it.cand;
+        var p = al.match(/^(.+?)\s+[\u2013\u2014-]\s+(.+)$/);   // "Banda – Disco"
+        if(p){ it.artist = p[1].trim(); al = p[2].trim(); }
+        it.album = al; it.title = it.track;
+      }
+      var key = it.album.toLowerCase(); if(!(key in order)) order[key] = n++;
+      it.g = order[key]; if(isNaN(it.o)) it.o = 1e9;
+      it.line = [it.album, it.title, it.artist, 'https://youtu.be/' + it.id].join(' | ');
     });
     items.sort(function(a, b){ return a.g - b.g || a.o - b.o || a.k - b.k; });
     return items.map(function(x){ return x.line; });
@@ -1610,6 +1686,7 @@
   /* ---------- início ---------- */
   loadDrawers();
   showShop();
+  updateAdminUI();
   initFirebase();
 
   /* ---------- abertura em vídeo ---------- */
