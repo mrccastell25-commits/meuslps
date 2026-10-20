@@ -259,11 +259,11 @@
   .hhot:focus-visible{outline:3px solid #ffd58a;outline-offset:3px}
   .hhot[disabled]{cursor:default;pointer-events:none}
   .detail.playing #hPlay{box-shadow:0 0 30px 8px rgba(255,225,170,.55)}
-  .hhot.on{box-shadow:0 0 34px 12px rgba(255,50,40,.75)}
+  .hhot.on{box-shadow:none}
   .hnav{font:600 21px/50px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-align:center;color:#e9d3a2;border:2px solid #b8924f;border-radius:8px;letter-spacing:.4px;
     background:linear-gradient(#2d241d,#14100d);box-shadow:0 4px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
   .hnav[disabled]{opacity:.4}
-  .edge{--ec:rgba(255,34,20,.9);--ec2:rgba(255,110,70,.55)}
+  .edge{display:none!important}
 
 
   /* ===== câmera: zoom da loja até a gaveta, mantendo o ambiente ao fundo ===== */
@@ -1357,17 +1357,15 @@
         }
       }
       var glow = real ? realLow : beat*vlvl;
-      edge.style.opacity = clamp(0.12*vlvl + 0.88*glow, 0, 1).toFixed(3);
       vuTick(dt, playing, vsum/NB, beat);
       spinStep(dt, playing);
-      if(dCover.offsetWidth) dCover.style.boxShadow = '0 14px 34px rgba(0,0,0,.6), 0 0 ' + (glow*46).toFixed(1) + 'px ' + (glow*8).toFixed(1) + 'px ' + a.p[1].replace('hsl(', 'hsla(').replace(')', ',' + (0.55*glow).toFixed(2) + ')');
     }
     vraf = requestAnimationFrame(drawViz);
   }
 
   function startViz(){
-    sizeViz(); fitScene(); edge.hidden = false;
-    if(reduceMotion){ edge.style.opacity = '0.45'; return; }
+    sizeViz(); fitScene();
+    if(reduceMotion) return;
     if(vraf) return;
     vLast = performance.now(); vraf = requestAnimationFrame(drawViz);
   }
