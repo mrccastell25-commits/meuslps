@@ -214,7 +214,7 @@
   @keyframes strobe{to{opacity:.18}}
 
   /* capa em pé: mapeada em perspectiva sobre o estojo da foto */
-  .hcclip{left:0;top:0;width:1725px;height:894px;pointer-events:none;clip-path:polygon(759px 269px,968px 252px,937px 708px,860px 708px,816px 692px,798px 639px,753px 548px,742px 478px)}
+  .hcclip{left:0;top:0;width:1725px;height:894px;pointer-events:none;clip-path:polygon(759px 269px,968px 252px,938px 712px,900px 706px,860px 699px,817px 692px,811px 681px,804px 661px,799px 641px,791px 611px,782px 581px,773px 551px,764px 521px,760px 501px,753px 471px,746px 441px)}
   .hcover{position:absolute;left:0;top:0;width:300px;height:640px;transform-origin:0 0;overflow:hidden;background:#101417;pointer-events:none}
   #hArt{position:absolute;inset:0}
   .hcover::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset -3px 0 0 rgba(255,255,255,.3)}
@@ -260,8 +260,9 @@
   .hknob{touch-action:none;cursor:grab;outline:none;border-radius:50%}
   .hknob:active{cursor:grabbing}
   .hknob:focus-visible{box-shadow:0 0 0 3px #ffd58a}
-  .hknob .kimg{position:absolute;inset:0;border-radius:50%;will-change:transform}
-  .hknob::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.14),rgba(255,255,255,0) 55%),radial-gradient(circle at 70% 78%,rgba(0,0,0,.2),rgba(0,0,0,0) 55%)}
+  .hknob .kface{position:absolute;inset:0;border-radius:50%;background-size:100% 100%;background-repeat:no-repeat}
+  .hknob .kptr{position:absolute;inset:0;will-change:transform}
+  .hknob .kptr i{position:absolute;border-radius:2px;background:linear-gradient(90deg,#ff6e4e,#e02510 55%,#a50f05);box-shadow:0 0 3px rgba(255,40,20,.55),0 1px 2px rgba(0,0,0,.55)}
 
   /* áreas clicáveis sobre a imagem */
   .hhot{border:0;padding:0;margin:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent;display:block;text-decoration:none;color:inherit}
@@ -329,10 +330,7 @@
   .scene.off .l2bar,.scene.off .l2time{visibility:hidden}
   @media (prefers-reduced-motion:reduce){.scene.rpm .hstrobe{animation:none}.l2led.blink{animation:none}}
 
-  /* Start/Stop vira o botão SYNC (VUs e válvulas seguem o som real da aba) */
-  .hstart .hsync{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font:700 11px/1 system-ui,sans-serif;letter-spacing:.18em;color:rgba(70,40,30,.75);text-shadow:0 1px 0 rgba(255,255,255,.35);pointer-events:none}
-  .hstart.on{box-shadow:inset 0 0 0 2px rgba(255,90,60,.85),0 0 14px rgba(255,70,40,.65)}
-  .hstart.on .hsync{color:#ff3b22;text-shadow:0 0 6px rgba(255,60,30,.9)}
+  .hstart:hover:not([disabled]){box-shadow:none}
 
   /* mini-player: o disco continua tocando enquanto você escolhe outro na loja */
   #mini{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;max-width:calc(100vw - 24px);padding:6px 8px 6px 12px;border-radius:12px;
@@ -342,6 +340,28 @@
   .minit{min-width:0;max-width:min(46vw,380px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:7px 10px;border-radius:6px;color:#ffb347;font:400 13px/1.1 'Special Elite',ui-monospace,monospace;letter-spacing:.06em;
     background:radial-gradient(ellipse at 50% 40%,#2a1604,#120a02);box-shadow:inset 0 0 8px #000,inset 0 0 0 1px rgba(255,170,60,.25);text-shadow:0 0 6px rgba(255,160,40,.55)}
   #mini .rbtn{height:34px;min-width:38px;padding:0 10px;font-size:13px}
+
+  /* LEDs vermelhos do volume: acendem em sequência do início até o ponto do botão */
+  .vled{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#2e1e18 0 55%,#1d1611 100%);transition:background .14s,box-shadow .14s}
+  .vled.on{background:radial-gradient(circle,#ffd6c6 0 14%,#ff3a1e 42%,#c01508 72%,rgba(190,20,10,0) 100%);box-shadow:0 0 7px 2px rgba(255,50,30,.75)}
+
+  /* sistema desligado: apaga todas as luzes que estão na foto */
+  .hdim{background-image:var(--bg);background-repeat:no-repeat;background-size:1725px 894px;opacity:0;transition:opacity .5s;pointer-events:none;filter:grayscale(.85) brightness(.5);
+    -webkit-mask-image:radial-gradient(closest-side,#000 62%,transparent 100%);mask-image:radial-gradient(closest-side,#000 62%,transparent 100%)}
+  .hdim.play{filter:grayscale(.5) brightness(.68)}
+  .hblk{background:rgba(10,6,4,.62);border-radius:6px;opacity:0;transition:opacity .5s;pointer-events:none}
+  .scene.off .hdim,.scene.off .hblk{opacity:1}
+  .hvu{transition:filter .5s}
+  .scene.off .hvu{filter:brightness(.28) saturate(.55)}
+  .htoff{background:rgba(10,6,4,.84)}
+  .scene.off .htube{opacity:0!important}
+  .detail.playing .scene.off #hPlay{box-shadow:none!important}
+
+  /* balcão da loja: a placa "Gaveta N" ganha uma abertura por onde se vê o LP lá dentro */
+  .fwin{position:absolute;pointer-events:none;overflow:hidden;border-radius:2px;background:#100b07;filter:sepia(.22) saturate(.85) contrast(.95) brightness(.7)}
+  .fwa{position:absolute}
+  .fwin::after{content:"";position:absolute;inset:0;box-shadow:inset 0 4px 7px rgba(0,0,0,.8),inset 0 0 9px rgba(0,0,0,.65);background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,0) 40%,rgba(0,0,0,.2))}
+  .fwin:empty{background:linear-gradient(180deg,#24170e,#0f0905)}
   /* ===== câmera: zoom da loja até a gaveta, mantendo o ambiente ao fundo ===== */
   .top .right{flex:none;white-space:nowrap}
   #count,.pill{white-space:nowrap}
@@ -476,8 +496,8 @@
           <div class="l2bar" id="l2bar"><i id="l2fill"></i></div>
           <span class="l2led" id="l2led"></span>
         </div>
-        <div class="hknob" id="hKnob" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80" style="left:1066px;top:272px;width:94px;height:94px"><div class="kimg crop" id="hKimg" style="background-position:-1066px -272px"></div></div>
-        <div class="hknob" id="hRecKnob" role="slider" tabindex="0" aria-label="Nível de gravação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" style="left:1200px;top:671px;width:80px;height:80px"><div class="kimg crop" id="hRKimg" style="background-position:-1200px -671px"></div></div>
+        <div class="hknob" id="hKnob" role="slider" tabindex="0" aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80" style="left:1066px;top:272px;width:94px;height:94px"><div class="kface" style="background-image:url(data:image/jpeg;base64,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)"></div><div class="kptr" id="hKptr"><i style="left:44.25px;top:10px;width:5.5px;height:20px"></i></div></div>
+        <div class="hknob" id="hRecKnob" role="slider" tabindex="0" aria-label="Nível de gravação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" style="left:1200px;top:671px;width:80px;height:80px"><div class="kface" style="background-image:url(data:image/jpeg;base64,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)"></div><div class="kptr" id="hRKptr"><i style="left:38.25px;top:4px;width:3.5px;height:14px"></i></div></div>
         <div class="reel" id="hReelL" style="left:1437px;top:499px"></div>
         <div class="reel" id="hReelR" style="left:1558px;top:500px"></div>
       </div>
@@ -533,7 +553,7 @@
         <button class="ctl" id="aNext" type="button">Próximo disco</button>
       </div>
       <div class="actions">
-        <button class="ctl main" id="dClose" type="button">Guardar na gaveta</button>
+        <button class="ctl main" id="dClose" type="button">Voltar à gaveta (continua tocando)</button>
         <button class="ctl" id="dMin" type="button">Voltar à loja (continua tocando)</button>
         <a class="ctl" id="dOpen" target="_blank" rel="noopener">Abrir no YouTube Music</a>
       </div>
@@ -929,7 +949,7 @@
 
   window.addEventListener('keydown', function(e){
     if(opened){
-      if(e.key === 'Escape'){ if(modal === 'detail') closeDetail(); else hideSetup(); }
+      if(e.key === 'Escape'){ if(modal === 'detail') minimizeDetail(); else hideSetup(); }
       else if(modal === 'detail' && e.key === 'ArrowRight') trackStep(1);
       else if(modal === 'detail' && e.key === 'ArrowLeft') trackStep(-1);
       return;
@@ -1116,8 +1136,8 @@
   tNext.addEventListener('click', mainNext);
   aPrev.addEventListener('click', function(){ albumStep(-1); });
   aNext.addEventListener('click', function(){ albumStep(1); });
-  $('dClose').addEventListener('click', closeDetail);
-  detail.addEventListener('click', function(e){ if(e.target === detail) closeDetail(); });
+  $('dClose').addEventListener('click', function(){ minimizeDetail(); });
+  detail.addEventListener('click', function(e){ if(e.target === detail) minimizeDetail(); });
 
   /* ---------- volume (controla o player do YouTube de verdade) ---------- */
   var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
@@ -1297,8 +1317,8 @@
   var HW = 1725, HH = 894;
   var scene = $('scene'), hfit = $('hfit'), hLrot = $('hLrot'), hCover = $('hCover'), hArt = $('hArt');
   var hLcd1 = $('hLcd1'), l2t = $('l2t'), l2c = $('l2c'), l2d = $('l2d'), l2bar = $('l2bar'), l2fill = $('l2fill'), l2led = $('l2led');
-  var hKnob = $('hKnob'), hKimg = $('hKimg'), hRecKnob = $('hRecKnob'), hRKimg = $('hRKimg');
-  var htubes = document.querySelectorAll('.htube'), lcdTop = 0, hHot = {}, spAng = 0, spVel = 0;
+  var hKnob = $('hKnob'), hKimg = $('hKptr'), hRecKnob = $('hRecKnob'), hRKimg = $('hRKptr');
+  var vleds = [], htubes = document.querySelectorAll('.htube'), lcdTop = 0, hHot = {}, spAng = 0, spVel = 0;
 
   /* mapeia um retângulo w x h sobre um quadrilátero qualquer (perspectiva) */
   function homog(w, h, q){
@@ -1363,8 +1383,20 @@
   var deck = 'stop';             // 'stop' | 'play' | 'rec' | 'ff' | 'rew'
   var rec = {on: false, seg: null};
   var powered = true, filterOn = false, recLevel = 50, shuttle = 0, tapeIdx = -1, lpResume = null, ytPlay = false, lastAdv = 0;
-  var lpCur = 0, lpDur = 0, lcdSig = '', lcdLast = -2, lcdLastMode = '', flashMsg = '', flashUntil = 0, deckTimer = 0, lastTick = 0;
+  var saveAt = 0, lpCur = 0, lpDur = 0, lcdSig = '', lcdLast = -2, lcdLastMode = '', flashMsg = '', flashUntil = 0, deckTimer = 0, lastTick = 0;
 
+  function tapeSave(){
+    try{ sessionStorage.setItem('gaveta:fita', JSON.stringify({segs: tape.segs, pos: tape.pos})); }catch(e){}
+  }
+  (function tapeLoad(){
+    try{
+      var t = JSON.parse(sessionStorage.getItem('gaveta:fita') || 'null');
+      if(t && t.segs && t.segs.length){
+        tape.segs = t.segs.filter(function(g){ return g && g.vid && g.dur >= 1; });
+        tape.pos = clamp(+t.pos || 0, 0, tape.segs.reduce(function(s, g){ return s + g.dur; }, 0));
+      }
+    }catch(e){}
+  })();
   function note(m){ dNote.textContent = m; flashMsg = m; flashUntil = performance.now() + 3800; }
   function tapeLen(){ var s = 0; for(var i = 0; i < tape.segs.length; i++) s += tape.segs[i].dur; return s; }
   function segOffset(i){ var s = 0; for(var k = 0; k < i; k++) s += tape.segs[k].dur; return s; }
@@ -1390,16 +1422,17 @@
       if(keep >= 1){ g.dur = keep; out.push(g); }
       break;
     }
-    tape.segs = out;
+    tape.segs = out; tapeSave();
   }
   function closeSeg(){
     var g = rec.seg; rec.seg = null;
     if(g && g.dur < 1){ var k = tape.segs.indexOf(g); if(k >= 0) tape.segs.splice(k, 1); }
+    tapeSave();
   }
   function recNewSeg(a, t, cur){
     closeSeg();
     var g = {vid: t.id, title: t.title, artist: a.artist || '', album: a.title, start: cur, dur: 0};
-    tape.segs.push(g); rec.seg = g;
+    tape.segs.push(g); rec.seg = g; tapeSave();
   }
   function recStart(){
     if(!powered) return;
@@ -1506,7 +1539,7 @@
   function tapeErase(){
     if(rec.on) recStop();
     if(mode === 'tape'){ try{ if(player && playerReady) player.pauseVideo(); }catch(e){} }
-    tape = {segs: [], pos: 0}; deck = 'stop'; shuttle = 0; tapeIdx = -1; lcdSig = '';
+    tape = {segs: [], pos: 0}; deck = 'stop'; shuttle = 0; tapeIdx = -1; lcdSig = ''; tapeSave();
     note('Fita apagada.');
   }
 
@@ -1556,6 +1589,7 @@
           if(!g || g.vid !== t.id || Math.abs(cur - (g.start + g.dur)) > 1.6) recNewSeg(a, t, cur);
           g = rec.seg; g.dur = Math.max(0, cur - g.start);
           tape.pos = tapeLen();
+          if(now - saveAt > 3000){ saveAt = now; tapeSave(); }
           if(tape.pos >= TAPE_CAP) recStop('Fita cheia (' + fmt(TAPE_CAP) + ').');
         }
       }
@@ -1575,6 +1609,7 @@
     if(rec.on) recStop();
     deck = 'stop'; shuttle = 0; mode = 'lp'; ytPlay = false; lpResume = null;
     crackleOff(); whirStop(true);
+    hifiRefresh();
   }
 
   /* ----- ruído analógico: estalos de disco (LP) ou chiado de fita (cassete), gerados aqui (o áudio do YouTube não é alterado).
@@ -1679,7 +1714,7 @@
   var lastTxt = {t: null, c: null, d: null, f: null, led: null};
   function hifiRefresh(){
     if(!hHot.hPower) return;
-    paintToggles(); paintDeck(); paintMini();
+    paintToggles(); paintDeck(); paintMini(); paintVleds(muted ? 0 : volume);
     if(!powered){
       if(lcdSig !== 'off'){
         lcdSig = 'off'; hLcd1.innerHTML = ''; l2t.textContent = ''; l2c.textContent = ''; l2d.textContent = ''; l2fill.style.width = '0'; l2led.className = 'l2led';
@@ -1719,16 +1754,18 @@
   }
 
   /* ----- volume e nível de gravação ----- */
-  function knobAng(v){ return -140 + v*2.8; }
+  function knobAng(v){ return -150 + v*3; }          // volume: -150° a +150° (acompanha a coroa de LEDs)
+  function knobAngR(v){ return -135 + v*2.7; }       // nível de gravação
   function hifiVolume(){
     if(!hKnob) return;
     var v = muted ? 0 : volume;
-    hKimg.style.transform = 'rotate(' + (knobAng(v) - 42.6).toFixed(1) + 'deg)';
+    hKimg.style.transform = 'rotate(' + knobAng(v).toFixed(1) + 'deg)';
+    paintVleds(v);
     hKnob.setAttribute('aria-valuenow', String(v));
   }
   function hifiRecLevel(){
     if(!hRecKnob) return;
-    hRKimg.style.transform = 'rotate(' + knobAng(recLevel).toFixed(1) + 'deg)';
+    hRKimg.style.transform = 'rotate(' + knobAngR(recLevel).toFixed(1) + 'deg)';
     hRecKnob.setAttribute('aria-valuenow', String(recLevel));
   }
   function setVol(v){
@@ -1752,6 +1789,40 @@
   wireKnob(hKnob, function(){ return volume; }, setVol);
   wireKnob(hRecKnob, function(){ return recLevel; }, setRecLevel);
   hifiVolume(); hifiRecLevel();
+
+  /* coroa de LEDs vermelhos do volume (cobre os pontinhos da foto): acendem em sequência até o ponteiro */
+  (function(){
+    var cx = 1112.6, cy = 319.5, R = 54.3;
+    for(var i = 0; i <= 20; i += 2){
+      var a = (-150 + 15*i) * Math.PI/180, el = document.createElement('i');
+      el.className = 'vled'; el.style.left = (cx + R*Math.sin(a)).toFixed(1) + 'px'; el.style.top = (cy - R*Math.cos(a)).toFixed(1) + 'px';
+      scene.appendChild(el); vleds.push(el);
+    }
+  })();
+  function paintVleds(v){
+    var n = (powered && v > 0) ? Math.min(11, Math.floor(v / 10) + 1) : 0;
+    for(var k = 0; k < vleds.length; k++){
+      var on = k < n, el = vleds[k];
+      if(el._on === on) continue;
+      el._on = on;
+      el.style.transitionDelay = (powered ? (on ? k*24 : (10 - k)*24) : 0) + 'ms';
+      el.classList.toggle('on', on);
+    }
+  }
+
+  /* luzes da foto que se apagam com o POWER (VUs, válvulas, visores e LEDs já são tratados no CSS) */
+  function dim(l, t, w, h, cls){
+    var el = document.createElement('i'); el.className = 'hdim ' + (cls || '');
+    el.style.cssText = 'left:' + l + 'px;top:' + t + 'px;width:' + w + 'px;height:' + h + 'px;background-position:-' + l + 'px -' + t + 'px';
+    scene.appendChild(el); return el;
+  }
+  dim(105, 563, 80, 72);            // luz do estroboscópio do prato
+  dim(671, 581, 20, 20);            // LED do pitch
+  dim(1293, 523, 60, 60, 'play');   // anel luminoso do botão play
+  [1453, 1497, 1535, 1574, 1613, 1654].forEach(function(x){ dim(x - 8, 701, 16, 16); });   // luzinhas das teclas do deck
+  dim(1434, 693, 40, 14);           // texto RECORD vermelho
+  dim(1318, 702, 20, 16);           // luz do seletor radio/tape
+  (function(){ var b = document.createElement('i'); b.className = 'hblk'; b.style.cssText = 'left:1425px;top:472px;width:260px;height:169px'; scene.appendChild(b); })();   // iluminação da janela da fita
 
   /* ----- disco girando, com inércia (33 rpm): só o rótulo, o resto do disco é a própria foto ----- */
   function spinStep(dt, spinning){
@@ -1836,7 +1907,7 @@
     if(vReal.hidden){ note('Este navegador não permite compartilhar o áudio da aba.'); return; }
     if(an){ stopReal(); note('Sincronização desligada: VUs no efeito visual.'); }
     else { note('Escolha esta aba e marque "Compartilhar áudio da guia".'); startReal(); }
-  }).innerHTML = '<span class="hsync">SYNC</span>';
+  });
 
   /* chaves POWER / SOURCE / FILTER, com LEDs */
   function tog(id, label, x, fn){
@@ -1890,9 +1961,9 @@
   /* navegação entre discos (na madeira, embaixo do toca-discos) */
   hot('hPrevA', '‹ Disco anterior', 44, 803, 150, 38, 'rect hnav', function(){ albumStep(-1); });
   hot('hNextA', 'Próximo disco ›', 204, 803, 150, 38, 'rect hnav', function(){ albumStep(1); });
-  hot('hBack', 'Voltar à loja', 364, 803, 170, 38, 'rect hnav', minimizeDetail).title = 'Voltar à loja e escolher outro disco (o som continua)';
-  hot('hSave', 'Guardar na gaveta', 544, 803, 190, 38, 'rect hnav', closeDetail).title = 'Parar e guardar o disco na gaveta';
-  hot('hOpen', 'Abrir no YouTube Music', 744, 803, 214, 38, 'rect hnav', null, 'a');
+  hot('hBack', 'Voltar à gaveta', 364, 803, 170, 38, 'rect hnav', minimizeDetail).title = 'Voltar à gaveta e escolher outro disco (o som continua)';
+  hot('hShop', 'Voltar à loja', 544, 803, 150, 38, 'rect hnav', goShop).title = 'Voltar à loja (o som continua)';
+  hot('hOpen', 'Abrir no YouTube Music', 704, 803, 214, 38, 'rect hnav', null, 'a');
   hHot.hOpen.target = '_blank'; hHot.hOpen.rel = 'noopener';
 
   hLcd1.addEventListener('click', function(e){
@@ -1958,7 +2029,8 @@
   $('miniNext').addEventListener('click', mainNext);
   $('miniOpen').addEventListener('click', restoreDetail);
   $('miniStop').addEventListener('click', closeDetail);
-  $('dMin').addEventListener('click', minimizeDetail);
+  function goShop(){ minimizeDetail(); showShop(); }
+  $('dMin').addEventListener('click', goShop);
   /* aperto de botão também no painel simples */
   document.querySelector('.detail-inner').addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('button') : null;
@@ -2203,7 +2275,14 @@
     var poly = ['0 0', '100% 0', '100% ' + py(f[3]), px(f[8]) + ' ' + py(f[3]), px(f[7]) + ' ' + py(f[4]), px(f[6]) + ' ' + py(f[4]), px(f[5]) + ' ' + py(f[3]), '0 ' + py(f[3])].join(',');
     return '<div class="fcov" aria-hidden="true" style="left:' + pc(f[0] - FPAD, IW) + ';top:' + pc(f[1] - FPAD, IH) + ';width:' + pc(W, IW) + ';height:' + pc(H, IH) + ';clip-path:polygon(' + poly + ')"><div class="fsq" data-i="' + i + '"></div><i class="fage"></i></div>';
   }
-  function shopArt(i, a){ var el = cabinet.querySelector('.fsq[data-i="' + i + '"]'); if(el) el.innerHTML = coverHTML(a); }
+  function shopArt(i, a){ var els = cabinet.querySelectorAll('.fsq[data-i="' + i + '"]'); for(var q = 0; q < els.length; q++) els[q].innerHTML = coverHTML(a); }
+  /* abertura na placa "Gaveta N": mostra a continuação do LP que está atrás (mesma arte, mesmo alinhamento) */
+  function fwinHTML(i, withArt){
+    var s = SPOTS[i % PER], f = FCOV[i % PER], wx = s[4] + 1, wy = s[5] + 1, ww = s[6] - s[4] - 2, wh = s[7] - s[5] - 2;
+    var aL = f[0] - FPAD, aT = f[1] - FPAD, aW = f[2] + 2*FPAD;
+    var inner = withArt ? '<div class="fwa" style="left:' + ((aL - wx) / ww * 100).toFixed(3) + '%;top:' + ((aT - wy) / wh * 100).toFixed(3) + '%;width:' + (aW / ww * 100).toFixed(3) + '%"><div class="fsq" data-i="' + i + '"></div></div>' : '';
+    return '<div class="fwin" aria-hidden="true" style="left:' + pc(wx, IW) + ';top:' + pc(wy, IH) + ';width:' + pc(ww, IW) + ';height:' + pc(wh, IH) + '">' + inner + '</div>';
+  }
   function shopFill(i, a){
     var c = shopPhoto[a.id];
     if(c){ a.photo = c; a.tried = true; shopArt(i, a); return; }
@@ -2216,6 +2295,7 @@
     growTo(NCOUNT); curCounter = clamp(curCounter, 0, NCOUNT - 1);
     for(var s = 0; s < PER; s++){
       var i = curCounter*PER + s, sp = SPOTS[s], txt = drawerText(i), lst = txt ? parseList(txt) : [], n = lst.length, nm = drawerName(i);
+      cov += fwinHTML(i, !!n);
       if(n){ cov += fcovHTML(i); firsts.push([i, lst[0]]); }
       var sub = n ? n + (n === 1 ? ' disco' : ' discos') : 'vazia';
       html += '<button type="button" class="drawer' + (n ? '' : ' empty') + '" data-i="' + i + '" title="' + esc(nm) + ' (' + sub + ')" aria-label="' + esc(drawerLabel(i)) + ': ' + esc(nm) + ', ' + sub + '" style="left:' + pc(sp[0], IW) + ';top:' + pc(sp[1], IH) + ';width:' + pc(sp[2]-sp[0], IW) + ';height:' + pc(sp[3]-sp[1], IH) + '"></button>';
@@ -2228,7 +2308,7 @@
     $('backShop').hidden = !inDrawer; $('editList').hidden = !inDrawer;
     document.querySelector('.brand').style.display = inDrawer ? '' : 'none';
     countEl.style.display = inDrawer ? '' : 'none';
-    brandTitle.textContent = inDrawer ? drawerName(curDrawer) : (NCOUNT > 1 ? 'Minha loja · Balcão ' + (curCounter + 1) : 'Minha loja');
+    brandTitle.textContent = inDrawer ? '' : (NCOUNT > 1 ? 'Minha loja · Balcão ' + (curCounter + 1) : 'Minha loja');   // as gavetas não têm nome na visão da gaveta
     hint.textContent = inDrawer ? 'Arraste, role ou use as setas para folhear. Toque num disco para tirá-lo.' : 'Escolha uma gaveta para folhear os discos.';
     hint.classList.remove('gone');
   }
