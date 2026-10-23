@@ -1320,7 +1320,9 @@
   var hKnob = $('hKnob'), hKimg = $('hKptr'), hRecKnob = $('hRecKnob'), hRKimg = $('hRKptr');
   var vleds = [], htubes = document.querySelectorAll('.htube'), lcdTop = 0, hHot = {}, spAng = 0, spVel = 0;
 
-  /* mapeia um retângulo w x h sobre um quadrilátero qualquer (perspectiva) */
+  /* mapeia um retângulo w x h sobre um quadrilátero qualquer (perspectiva).
+     O estojo da foto tem as linhas horizontais convergindo para um ponto à esquerda (y≈373): a borda de cima sobe para a direita,
+     a de baixo desce (igual à base do suporte), e a lateral direita é mais alta que a esquerda. */
   function homog(w, h, q){
     var src = [[0,0],[w,0],[w,h],[0,h]], A = [], b = [], i, r, c;
     for(i = 0; i < 4; i++){
@@ -1338,7 +1340,7 @@
     for(i = 7; i >= 0; i--){ var v = b[i]; for(c = i + 1; c < 8; c++) v -= A[i][c]*s[c]; s[i] = v / A[i][i]; }
     return 'matrix3d(' + [s[0], s[3], 0, s[6], s[1], s[4], 0, s[7], 0, 0, 1, 0, s[2], s[5], 0, 1].join(',') + ')';
   }
-  hCover.style.transform = homog(300, 640, [[759,269],[968,252],[935,712],[727,729]]);
+  hCover.style.transform = homog(300, 640, [[759,269],[968,252],[935,712],[726,664]]);
 
   function fitScene(){ var w = hfit.clientWidth; if(w) scene.style.transform = 'scale(' + (w/HW).toFixed(5) + ')'; }
   window.addEventListener('resize', fitScene);
