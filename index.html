@@ -547,6 +547,14 @@
           <button class="ctl" id="fErase" type="button">Apagar fita</button>
         </div>
       </div>
+      <div class="tape" id="radioBar" aria-label="Rádio">
+        <p class="tapeinfo" id="rInfo">Rádio desligado</p>
+        <div class="tapebtns">
+          <button class="ctl" id="rPrev" type="button" aria-label="Rádio anterior">◀</button>
+          <button class="ctl" id="rOn" type="button">Rádio do RS</button>
+          <button class="ctl" id="rNext" type="button" aria-label="Próxima rádio">▶</button>
+        </div>
+      </div>
       <p class="note" id="dNote" role="status"></p>
       <div class="actions">
         <button class="ctl" id="aPrev" type="button">Disco anterior</button>
@@ -1078,7 +1086,7 @@
   function playTrack(t){
     var a = PA(); if(!a || t < 0 || t >= a.tracks.length) return;
     if(!powered) setPower(true);
-    if(mode === 'tape'){ tapeHalt(); mode = 'lp'; lpResume = null; lcdSig = ''; }
+    if(mode !== 'lp'){ if(mode === 'radio') radioStopAudio(); tapeHalt(); mode = 'lp'; lpResume = null; lcdSig = ''; }
     ytPlay = false;
     curTrack = t; markTrack();
     dNote.textContent = ''; dSeek.value = 0; dCur.textContent = '0:00'; dDur.textContent = '0:00'; hifiTime(0, 0);
@@ -1385,6 +1393,8 @@
   var deck = 'stop';             // 'stop' | 'play' | 'rec' | 'ff' | 'rew'
   var rec = {on: false, seg: null};
   var powered = true, filterOn = false, recLevel = 50, shuttle = 0, tapeIdx = -1, lpResume = null, ytPlay = false, lastAdv = 0;
+  var radio = {list: [], idx: 0, loaded: false, loading: false, state: 'idle', t0: 0, fails: 0, dir: 1, wantPlay: false, stopping: false, base: ''}, radioEl = new Audio();
+  radioEl.preload = 'none';
   var saveAt = 0, lpCur = 0, lpDur = 0, lcdSig = '', lcdLast = -2, lcdLastMode = '', flashMsg = '', flashUntil = 0, deckTimer = 0, lastTick = 0;
 
   function tapeSave(){
@@ -1438,6 +1448,7 @@
   }
   function recStart(){
     if(!powered) return;
+    if(mode === 'radio'){ note('Não dá para gravar a rádio: o navegador não captura o áudio dela.'); return; }
     if(mode !== 'lp' && setSource('lp') === false) return;
     eraseFrom(tape.pos); tape.pos = tapeLen();
     if(tape.pos >= TAPE_CAP - 1){ note('A fita está cheia. Volte ao começo (REW) para regravar.'); return; }
@@ -1453,20 +1464,26 @@
   /* ----- fonte (disco ou fita) ----- */
   function setSource(src){
     if(src === mode) return true;
-    if(rec.on && src === 'tape'){ note('Pare a gravação antes de ouvir a fita.'); return false; }
-    if(src === 'tape'){
+    if(rec.on && src !== 'lp'){ note(mode === 'lp' ? 'Pare a gravação antes de trocar de fonte.' : 'Pare a gravação antes de ouvir a fita.'); return false; }
+    var from = mode;
+    if(from === 'radio') radioStopAudio();
+    if(from === 'lp' && src !== 'lp'){
       var a = PA(), t = a && a.tracks[curTrack];
       try{ if(player && playerReady && t) lpResume = {album: PA(), track: curTrack, t: player.getCurrentTime() || 0}; }catch(e){}
-      try{ if(player && playerReady) player.pauseVideo(); }catch(e){}
-      mode = 'tape'; ytPlay = false;
-      detail.classList.remove('playing');
-    } else {
+    }
+    if(src !== 'lp'){ try{ if(player && playerReady) player.pauseVideo(); }catch(e){} }
+    if(src === 'lp'){
       tapeHalt(); mode = 'lp'; ytPlay = false;
       var a2 = PA(), t2 = a2 && a2.tracks[curTrack];
       var st = (lpResume && lpResume.album === PA() && lpResume.track === curTrack) ? lpResume.t : 0;
       try{ if(player && playerReady && t2) player.cueVideoById({videoId: t2.id, startSeconds: st}); }catch(e){}
-      detail.classList.remove('playing');
+    } else if(src === 'tape'){
+      tapeHalt(); mode = 'tape'; ytPlay = false;
+    } else {
+      tapeHalt(); mode = 'radio'; ytPlay = false;
     }
+    detail.classList.remove('playing');
+    if(src === 'radio') radioEnter();
     lcdSig = ''; hifiRefresh();
     return true;
   }
@@ -1494,6 +1511,7 @@
   }
   function deckPlay(toggle){
     if(!powered || rec.on) return;
+    if(mode === 'radio'){ if(toggle && (radio.state === 'playing' || radio.state === 'loading')) radioStopAudio(); else if(radio.state !== 'playing') radioPlay(); return; }
     if(deck === 'play' && mode === 'tape'){
       try{ if(ytPlay){ if(toggle) player.pauseVideo(); } else player.playVideo(); }catch(e){}
       return;
@@ -1504,18 +1522,21 @@
     playTapeAt(tape.pos);
   }
   function deckStop(){
+    if(mode === 'radio'){ radioStopAudio(); return; }
     if(rec.on) recStop();
     if(mode === 'tape'){ try{ if(player && playerReady) player.pauseVideo(); }catch(e){} }
     if(deck !== 'stop') tapeHalt();
     deck = 'stop'; shuttle = 0;
   }
   function deckPauseKey(){
+    if(powered && mode === 'radio'){ radioToggle(); return; }
     if(!powered || !player || !playerReady) return;
     if(!(rec.on || deck === 'play')) return;
     try{ if(ytPlay) player.pauseVideo(); else player.playVideo(); }catch(e){}
   }
   function deckShuttle(dir){
     if(!powered) return;
+    if(mode === 'radio'){ radioStep(dir); return; }     // avanço/retrocesso = próxima/anterior estação
     if(rec.on){ note('Pare a gravação antes de rebobinar.'); return; }
     if(!tape.segs.length){ note('Fita vazia.'); return; }
     if(deck === (dir > 0 ? 'ff' : 'rew')){ deckStop(); return; }
@@ -1545,10 +1566,127 @@
     note('Fita apagada.');
   }
 
+  /* =====================================================================
+     RÁDIO (internet) — a alavanca RADIO-TAPE liga; PREVIOUS/NEXT (e REW/FF) trocam de estação.
+     As estações do Rio Grande do Sul vêm do Radio Browser (diretório aberto e gratuito, sem chave) na hora que o rádio é ligado.
+     Para ter rádios suas fixas no começo da lista, preencha RADIOS_FIXAS.
+     O navegador não consegue capturar o áudio de uma rádio, então não dá para gravar rádio na fita.
+     ===================================================================== */
+  var RADIOS_FIXAS = [];   // exemplo: {name: 'Minha Rádio', url: 'https://servidor/stream'}
+  var RADIO_API = ['https://de1.api.radio-browser.info', 'https://nl1.api.radio-browser.info', 'https://at1.api.radio-browser.info'];
+  var RADIO_FALLBACK = [   // só entram se o diretório não responder (rádios internacionais abertas)
+    {name: 'SomaFM Groove Salad', url: 'https://ice.somafm.com/groovesalad'},
+    {name: 'SomaFM Lush', url: 'https://ice.somafm.com/lush'},
+    {name: 'SomaFM Left Coast 70s', url: 'https://ice.somafm.com/seventies'},
+    {name: 'SomaFM Underground 80s', url: 'https://ice.somafm.com/u80s'},
+    {name: 'SomaFM Indie Pop Rocks', url: 'https://ice.somafm.com/indiepop'}
+  ];
+  function radioParse(arr){
+    var out = [], seen = {}, https = location.protocol === 'https:';
+    (arr || []).forEach(function(r){
+      var url = r.url_resolved || r.url;
+      if(!url || r.hls || r.lastcheckok === 0) return;
+      if(https && url.indexOf('https:') !== 0) return;      // página em https não toca stream http
+      var name = String(r.name || '').replace(/\s+/g, ' ').trim(); if(!name) return;
+      var key = name.toLowerCase(); if(seen[key]) return; seen[key] = 1;
+      out.push({name: name, url: url, uuid: r.stationuuid || '', codec: r.codec || '', bitrate: r.bitrate || 0});
+    });
+    return out;
+  }
+  function radioFetch(qs, done){          // tenta os servidores do diretório em sequência
+    var i = 0;
+    (function next(){
+      if(i >= RADIO_API.length){ done(null); return; }
+      var base = RADIO_API[i++], ctl = window.AbortController ? new AbortController() : null;
+      var to = setTimeout(function(){ if(ctl) ctl.abort(); }, 7000);
+      fetch(base + '/json/stations/search?' + qs, ctl ? {signal: ctl.signal} : {})
+        .then(function(r){ clearTimeout(to); if(!r.ok) throw 0; return r.json(); })
+        .then(function(arr){ done({base: base, list: radioParse(arr)}); })
+        .catch(function(){ clearTimeout(to); next(); });
+    })();
+  }
+  function radioLoad(){
+    if(radio.loading || radio.loaded) return;
+    radio.loading = true; lcdSig = '';
+    var q = 'countrycode=BR&hidebroken=true&order=clickcount&reverse=true&limit=150';
+    radioFetch(q + '&state=' + encodeURIComponent('Rio Grande do Sul'), function(r){
+      if(r && r.list.length){ radioApply(r, false); return; }
+      radioFetch(q + '&state=RS', function(r2){            // algumas estações usam a sigla
+        if(r2 && r2.list.length) radioApply(r2, false); else radioApply(r2 || r, true);
+      });
+    });
+  }
+  function radioApply(r, failed){
+    var list = RADIOS_FIXAS.map(function(f){ return {name: f.name, url: f.url, uuid: '', codec: '', bitrate: 0}; });
+    if(r && r.list.length){ list = list.concat(r.list); radio.base = r.base; }
+    else {
+      list = list.concat(RADIO_FALLBACK);
+      note(r ? 'Nenhuma rádio do RS encontrada no diretório. Mostrando rádios de exemplo.' : 'Sem acesso ao diretório de rádios. Mostrando rádios de exemplo.');
+    }
+    radio.list = list; radio.loaded = true; radio.loading = false;
+    try{ var last = localStorage.getItem('gaveta:radio'); if(last) for(var i = 0; i < list.length; i++) if(list[i].name === last){ radio.idx = i; break; } }catch(e){}
+    lcdSig = '';
+    if(mode === 'radio' && radio.wantPlay) radioTune(radio.idx);
+    hifiRefresh();
+  }
+  function staticBurst(ms){              // chiado curto ao girar o dial entre estações
+    if(!soundOn) return; ensureAudio(); if(!ac) return;
+    try{
+      var len = (ac.sampleRate * ms / 1000) | 0, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+      for(var i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * (1 - 0.7*i/len);
+      var s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = buf; f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 0.5;
+      g.gain.value = 0.22 * (muted ? 0 : volume/100);
+      s.connect(f); f.connect(g); g.connect(ac.destination); s.start();
+    }catch(e){}
+  }
+  function radioTune(i){
+    var n = radio.list.length; if(!n) return;
+    radio.idx = ((i % n) + n) % n;
+    var st = radio.list[radio.idx];
+    try{ localStorage.setItem('gaveta:radio', st.name); }catch(e){}
+    radio.state = 'loading'; radio.t0 = 0; radio.wantPlay = true; radio.stopping = false;
+    detail.classList.remove('playing');
+    staticBurst(420);
+    radioEl.src = st.url;
+    radioVol();
+    var p = radioEl.play();
+    if(p && p.catch) p.catch(function(err){
+      if(err && err.name === 'AbortError') return;      // interrompido por outra troca de estação
+      radio.state = 'error'; note('Toque no play para ouvir a rádio.');
+    });
+    if(st.uuid && radio.base){ try{ fetch(radio.base + '/json/url/' + st.uuid).catch(function(){}); }catch(e){} }   // conta a audiência no diretório
+    lcdSig = ''; hifiRefresh();
+  }
+  function radioStopAudio(){
+    radio.stopping = true; radio.wantPlay = false;
+    try{ radioEl.pause(); radioEl.removeAttribute('src'); radioEl.load(); }catch(e){}
+    radio.state = 'idle'; radio.t0 = 0;
+    if(mode === 'radio') detail.classList.remove('playing');
+  }
+  function radioEnter(){ radio.wantPlay = true; if(radio.loaded) radioTune(radio.idx); else radioLoad(); }
+  function radioPlay(){ if(!radio.loaded){ radio.wantPlay = true; radioLoad(); return; } radioTune(radio.idx); }
+  function radioToggle(){ if(radio.state === 'playing' || radio.state === 'loading') radioStopAudio(); else radioPlay(); }
+  function radioStep(dir){ radio.dir = dir; if(!radio.loaded){ radio.wantPlay = true; radioLoad(); return; } radioTune(radio.idx + dir); }
+  function radioVol(){ try{ radioEl.volume = muted ? 0 : clamp(volume / 100, 0, 1); }catch(e){} }
+  radioEl.addEventListener('playing', function(){
+    if(mode !== 'radio' || radio.stopping) return;
+    radio.state = 'playing'; radio.t0 = performance.now(); radio.fails = 0;
+    detail.classList.add('playing'); radioVol();
+  });
+  ['waiting', 'stalled'].forEach(function(ev){ radioEl.addEventListener(ev, function(){ if(mode === 'radio' && radio.state === 'playing') radio.state = 'loading'; }); });
+  radioEl.addEventListener('error', function(){
+    if(mode !== 'radio' || radio.stopping || !radioEl.getAttribute('src')) return;
+    radio.state = 'error'; detail.classList.remove('playing');
+    if(radio.fails++ < 3 && radio.wantPlay){ setTimeout(function(){ if(mode === 'radio' && radio.state === 'error') radioStep(radio.dir || 1); }, 1500); }   // pula estação sem sinal
+    else note('Sem sinal. Tente outra rádio.');
+  });
+
   /* ----- chaves principais ----- */
   function setPower(on){
     powered = on;
     if(!on){
+      radioStopAudio();
       if(rec.on) recStop();
       deck = 'stop'; shuttle = 0; ytPlay = false;
       try{ if(player && playerReady) player.pauseVideo(); }catch(e){}
@@ -1561,17 +1699,18 @@
   /* ----- botões de transporte (valem para a fonte ativa) ----- */
   function mainPlay(){
     if(!powered) return;
+    if(mode === 'radio'){ radioToggle(); return; }
     if(mode === 'tape'){ deckPlay(true); return; }
     if(!player || !playerReady) return;
     try{ if(player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo(); }catch(e){}
   }
-  function mainPrev(){ if(!powered) return; if(mode === 'tape') tapeSkip(-1); else trackStep(-1); }
-  function mainNext(){ if(!powered) return; if(mode === 'tape') tapeSkip(1); else trackStep(1); }
+  function mainPrev(){ if(!powered) return; if(mode === 'radio') radioStep(-1); else if(mode === 'tape') tapeSkip(-1); else trackStep(-1); }
+  function mainNext(){ if(!powered) return; if(mode === 'radio') radioStep(1); else if(mode === 'tape') tapeSkip(1); else trackStep(1); }
   function stopPlayback(){
     try{ if(player && playerReady){ player.pauseVideo(); player.seekTo(0, true); } }catch(e){}
     hifiTime(0, (player && playerReady && player.getDuration) ? player.getDuration() : 0);
   }
-  function mainStop(){ if(!powered) return; if(mode === 'tape') deckStop(); else stopPlayback(); }
+  function mainStop(){ if(!powered) return; if(mode === 'radio') radioStopAudio(); else if(mode === 'tape') deckStop(); else stopPlayback(); }
 
   /* ----- relógio do deck (100 ms): gravação, fita, avanço/retrocesso ----- */
   function deckTick(){
@@ -1610,7 +1749,7 @@
     if(deckTimer){ clearInterval(deckTimer); deckTimer = 0; }
     if(rec.on) recStop();
     deck = 'stop'; shuttle = 0; mode = 'lp'; ytPlay = false; lpResume = null;
-    crackleOff(); whirStop(true);
+    crackleOff(); whirStop(true); radioStopAudio();
     hifiRefresh();
   }
 
@@ -1690,7 +1829,13 @@
   function hLcdRender(){
     var a = PA(); if(!a) return;
     var isTape = mode === 'tape', rows, cur, i, html = '';
-    if(isTape){
+    if(mode === 'radio'){
+      if(!radio.list.length){
+        hLcd1.innerHTML = '<span class="lcdmsg" style="margin-top:2px">' + (radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS') + '</span><span class="lcdmsg">Rio Grande do Sul</span>';
+        return;
+      }
+      rows = radio.list.map(function(r){ return r.name; }); cur = radio.idx;
+    } else if(isTape){
       if(!tape.segs.length){
         hLcd1.innerHTML = '<span class="lcdmsg" style="margin-top:2px">FITA VAZIA</span><span class="lcdmsg">Toque um disco e</span><span class="lcdmsg">aperte REC.</span>';
         return;
@@ -1725,13 +1870,20 @@
       return;
     }
     var a = PA(); if(!a) return;
-    var n = mode === 'tape' ? tape.segs.length : a.tracks.length, cs = mode === 'tape' ? tapeCur() : curTrack;
+    var n = mode === 'radio' ? radio.list.length : mode === 'tape' ? tape.segs.length : a.tracks.length, cs = mode === 'radio' ? radio.idx : mode === 'tape' ? tapeCur() : curTrack;
     if(cs !== lcdLast || mode !== lcdLastMode){ lcdLast = cs; lcdLastMode = mode; lcdTop = clamp(cs - 2, 0, Math.max(0, n - 6)); lcdSig = ''; }
-    var sig = mode + '|' + curAlbum + '|' + curTrack + '|' + tape.segs.length + '|' + tapeCur() + '|' + lcdTop;
+    var sig = mode + '|' + curAlbum + '|' + curTrack + '|' + tape.segs.length + '|' + tapeCur() + '|' + lcdTop + '|' + radio.idx + '|' + radio.list.length + '|' + radio.loading;
     if(sig !== lcdSig){ lcdSig = sig; hLcdRender(); }
 
-    var line, big, small, frac;
-    if(tapeView()){
+    var line, big, small, frac, tnow = performance.now();
+    if(mode === 'radio'){
+      var rs = radio.list[radio.idx], nr = radio.list.length;
+      if(!nr) line = radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS';
+      else line = (radio.state === 'loading' ? 'SINTONIZANDO ' : radio.state === 'error' ? 'SEM SINAL ' : 'RÁDIO ') + pad2(radio.idx + 1) + '/' + pad2(nr) + ' ' + rs.name;
+      big = radio.state === 'playing' ? fmt((tnow - radio.t0) / 1000) : '--:--';
+      small = ' / ' + (rs && rs.codec ? rs.codec.toUpperCase() + (rs.bitrate ? ' ' + rs.bitrate + 'K' : '') : 'AO VIVO');
+      frac = radio.state === 'playing' ? 0.62 + 0.3 * Math.sin(tnow / 1300) * Math.cos(tnow / 470) : radio.state === 'loading' ? (tnow % 1400) / 1400 : 0;
+    } else if(tapeView()){
       var ci = tapeCur(), g = ci >= 0 ? tape.segs[ci] : null, ns = tape.segs.length;
       if(rec.on) line = 'REC ' + pad2(Math.max(1, ci + 1)) + ' ' + (g ? g.title : (a.tracks[curTrack] ? a.tracks[curTrack].title : ''));
       else line = ns ? 'FITA ' + pad2(ci + 1) + '/' + pad2(ns) + ' ' + (g ? g.title : '') : 'FITA VAZIA';
@@ -1751,6 +1903,9 @@
     if(led !== lastTxt.led){ l2led.className = led; lastTxt.led = led; }
 
     var ns2 = tape.segs.length;
+    var rl = radio.list[radio.idx];
+    $('rInfo').textContent = mode === 'radio' ? (radio.list.length ? (radio.state === 'playing' ? 'Ouvindo: ' : radio.state === 'error' ? 'Sem sinal: ' : 'Sintonizando: ') + rl.name : (radio.loading ? 'Buscando rádios do RS…' : 'Sem rádios')) : 'Rádio desligado';
+    $('rOn').classList.toggle('on', mode === 'radio');
     $('tInfo').textContent = (ns2 ? 'Fita: ' + ns2 + (ns2 === 1 ? ' faixa' : ' faixas') + ' · ' + fmt(tapeLen()) + ' de ' + fmt(TAPE_CAP) : 'Fita vazia (' + fmt(TAPE_CAP) + ' livres)')
       + (rec.on ? ' · GRAVANDO' : (mode === 'tape' ? ' · ouvindo a fita' : ''));
   }
@@ -1764,6 +1919,7 @@
     hKimg.style.transform = 'rotate(' + knobAng(v).toFixed(1) + 'deg)';
     paintVleds(v);
     hKnob.setAttribute('aria-valuenow', String(v));
+    radioVol();
   }
   function hifiRecLevel(){
     if(!hRecKnob) return;
@@ -1928,13 +2084,21 @@
   function paintToggles(){
     hHot.hPower.classList.toggle('up', powered);
     hHot.hSource.classList.toggle('up', mode === 'lp');
+    hHot.hRadio.classList.toggle('up', mode === 'radio');
     hHot.hFilter.classList.toggle('up', filterOn);
     hHot.hLedP.classList.toggle('on', powered);
-    hHot.hLedS.style.setProperty('--c', mode === 'tape' ? '#ff4a3a' : '#3dffa0');
-    hHot.hLedS.style.setProperty('--g', mode === 'tape' ? 'rgba(255,70,50,.7)' : 'rgba(60,255,160,.65)');
+    var lc = mode === 'tape' ? ['#ff4a3a', 'rgba(255,70,50,.7)'] : mode === 'radio' ? ['#ffb02e', 'rgba(255,170,40,.7)'] : ['#3dffa0', 'rgba(60,255,160,.65)'];   // verde = disco, vermelho = fita, âmbar = rádio
+    hHot.hLedS.style.setProperty('--c', lc[0]);
+    hHot.hLedS.style.setProperty('--g', lc[1]);
     hHot.hLedS.classList.toggle('on', powered);
     hHot.hLedF.classList.toggle('on', powered && filterOn);
   }
+
+  /* alavanca RADIO-TAPE (ao lado do REC LEVEL): para cima liga o rádio */
+  (function(){
+    var el = hot('hRadio', 'Rádio do RS (alavanca para cima) / disco e fita (para baixo)', 1319, 684, 20, 46, 'rect htog', function(){ if(powered) setSource(mode === 'radio' ? 'lp' : 'radio'); });
+    el.innerHTML = '<span class="tg crop" style="background-position:-1319px -684px"></span>';
+  })();
 
   /* teclas do deck de fita */
   var KEYS = [
@@ -1953,8 +2117,8 @@
     dot.style.cssText = 'left:' + (k[2] - 1) + 'px;top:709px'; scene.appendChild(dot); hHot[k[0] + 'd'] = dot;
   });
   function paintDeck(){
-    var run = deck === 'play' || rec.on;
-    var st = {hKrec: rec.on, hKplay: run, hKff: deck === 'ff', hKrew: deck === 'rew', hKstop: false, hKpause: run && !ytPlay && powered};
+    var run = deck === 'play' || rec.on, rad = mode === 'radio' && radio.state === 'playing';
+    var st = {hKrec: rec.on, hKplay: run || rad, hKff: deck === 'ff', hKrew: deck === 'rew', hKstop: false, hKpause: run && !ytPlay && powered};
     for(var id in st){ hHot[id].classList.toggle('on', !!st[id]); hHot[id + 'd'].classList.toggle('on', !!st[id]); }
     hHot.hKrec.classList.toggle('recon', rec.on);
     $('fRec').classList.toggle('on', rec.on); $('fPlay').classList.toggle('on', deck === 'play');
@@ -1971,10 +2135,10 @@
   hLcd1.addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('.lcdl') : null;
     if(!b || !powered) return;
-    if(mode === 'tape') tapeJump(+b.dataset.t); else playTrack(+b.dataset.t);
+    if(mode === 'radio') radioTune(+b.dataset.t); else if(mode === 'tape') tapeJump(+b.dataset.t); else playTrack(+b.dataset.t);
   });
   hLcd1.addEventListener('wheel', function(e){
-    var n = mode === 'tape' ? tape.segs.length : (PA() ? PA().tracks.length : 0);
+    var n = mode === 'radio' ? radio.list.length : mode === 'tape' ? tape.segs.length : (PA() ? PA().tracks.length : 0);
     if(n <= 6) return;
     e.preventDefault(); lcdTop = clamp(lcdTop + (e.deltaY > 0 ? 1 : -1), 0, n - 6); lcdSig = ''; hifiRefresh();
   }, {passive:false});
@@ -2000,9 +2164,11 @@
     if(m.hidden === show) m.hidden = !show;
     if(!show) return;
     var a = PA(), t = a && a.tracks[curTrack], txt;
-    if(mode === 'tape'){ var g = tape.segs[tapeCur()]; txt = 'FITA · ' + (g ? g.title : 'parada'); }
+    var rp = mode === 'radio' ? (radio.state === 'playing' || radio.state === 'loading') : ytPlay;
+    if(mode === 'radio'){ var rr = radio.list[radio.idx]; txt = 'RÁDIO · ' + (rr ? rr.name : 'sintonizando…'); }
+    else if(mode === 'tape'){ var g = tape.segs[tapeCur()]; txt = 'FITA · ' + (g ? g.title : 'parada'); }
     else txt = (rec.on ? '● REC · ' : '') + (t ? t.title : '') + (a ? ' · ' + a.title : '');
-    var pl = ytPlay ? '❚❚' : '▶', key = txt + '|' + pl;
+    var pl = rp ? '❚❚' : '▶', key = txt + '|' + pl;
     if(key !== miniLast){ miniLast = key; $('miniT').textContent = txt; $('miniPlay').textContent = pl; }
   }
   function minimizeDetail(){
@@ -2046,6 +2212,9 @@
   $('fRew').addEventListener('click', function(){ deckShuttle(-1); });
   $('fFf').addEventListener('click', function(){ deckShuttle(1); });
   $('fErase').addEventListener('click', tapeErase);
+  $('rOn').addEventListener('click', function(){ if(powered) setSource(mode === 'radio' ? 'lp' : 'radio'); });
+  $('rPrev').addEventListener('click', function(){ if(mode === 'radio') radioStep(-1); });
+  $('rNext').addEventListener('click', function(){ if(mode === 'radio') radioStep(1); });
 
   function sizeViz(){
     var dpr = window.devicePixelRatio || 1, w = viz.clientWidth, h = viz.clientHeight;
