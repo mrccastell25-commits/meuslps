@@ -1393,7 +1393,7 @@
   var deck = 'stop';             // 'stop' | 'play' | 'rec' | 'ff' | 'rew'
   var rec = {on: false, seg: null};
   var powered = true, filterOn = false, recLevel = 50, shuttle = 0, tapeIdx = -1, lpResume = null, ytPlay = false, lastAdv = 0;
-  var radio = {list: [], idx: 0, loaded: false, loading: false, state: 'idle', t0: 0, fails: 0, dir: 1, wantPlay: false, stopping: false, base: ''}, radioEl = new Audio();
+  var radio = {tok: 0, list: [], idx: 0, loaded: false, loading: false, state: 'idle', t0: 0, fails: 0, dir: 1, wantPlay: false, stopping: false, base: ''}, radioEl = new Audio();
   radioEl.preload = 'none';
   var saveAt = 0, lpCur = 0, lpDur = 0, lcdSig = '', lcdLast = -2, lcdLastMode = '', flashMsg = '', flashUntil = 0, deckTimer = 0, lastTick = 0;
 
@@ -1585,11 +1585,12 @@
     var out = [], seen = {}, https = location.protocol === 'https:';
     (arr || []).forEach(function(r){
       var url = r.url_resolved || r.url;
-      if(!url || r.hls || r.lastcheckok === 0) return;
+      if(!url || r.lastcheckok === 0) return;
+      var isHls = !!r.hls || /\.m3u8(\?|$)/i.test(url);
       if(https && url.indexOf('https:') !== 0) return;      // página em https não toca stream http
       var name = String(r.name || '').replace(/\s+/g, ' ').trim(); if(!name) return;
       var key = name.toLowerCase(); if(seen[key]) return; seen[key] = 1;
-      out.push({name: name, url: url, uuid: r.stationuuid || '', codec: r.codec || '', bitrate: r.bitrate || 0});
+      out.push({name: name, url: url, uuid: r.stationuuid || '', hls: isHls, codec: isHls ? 'HLS' : (r.codec || ''), bitrate: isHls ? 0 : (r.bitrate || 0)});
     });
     return out;
   }
@@ -1629,6 +1630,49 @@
     if(mode === 'radio' && radio.wantPlay) radioTune(radio.idx);
     hifiRefresh();
   }
+  /* Rádios em HLS (.m3u8), como a Rádio Gaúcha: o Safari toca sozinho; nos outros navegadores carregamos o hls.js
+     (versão fixa + trava de integridade) só na primeira vez que uma estação HLS é sintonizada. */
+  var HLS_URL = 'https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.min.js';
+  var HLS_SRI = 'sha384-cciJ0zi8d1uMKC2zJd7jvPY4HQt7W4ByUI/FlMkltvBi31aW61rcpVBhpmW8/NwX';
+  var hlsInst = null, hlsQ = null;
+  function hlsLoad(ok, fail){
+    if(window.Hls){ ok(); return; }
+    if(hlsQ){ hlsQ.push([ok, fail]); return; }
+    hlsQ = [[ok, fail]];
+    var sc = document.createElement('script');
+    sc.src = HLS_URL; sc.integrity = HLS_SRI; sc.crossOrigin = 'anonymous';
+    sc.onload = function(){ var q = hlsQ; hlsQ = null; q.forEach(function(x){ x[0](); }); };
+    sc.onerror = function(){ var q = hlsQ; hlsQ = null; q.forEach(function(x){ x[1](); }); };
+    document.head.appendChild(sc);
+  }
+  function hlsDestroy(){ if(hlsInst){ try{ hlsInst.destroy(); }catch(e){} hlsInst = null; } }
+  function radioFail(msg){
+    radio.state = 'error'; detail.classList.remove('playing');
+    if(radio.fails++ < 3 && radio.wantPlay){ setTimeout(function(){ if(mode === 'radio' && radio.state === 'error') radioStep(radio.dir || 1); }, 1500); }   // pula estação sem sinal
+    else note(msg || 'Sem sinal. Tente outra rádio.');
+  }
+  function radioStart(st, tok){
+    var playIt = function(){
+      var p = radioEl.play();
+      if(p && p.catch) p.catch(function(err){
+        if(err && err.name === 'AbortError') return;      // interrompido por outra troca de estação
+        radio.state = 'error'; note('Toque no play para ouvir a rádio.');
+      });
+    };
+    hlsDestroy();
+    if(st.hls && !radioEl.canPlayType('application/vnd.apple.mpegurl')){
+      hlsLoad(function(){
+        if(tok !== radio.tok || mode !== 'radio') return;
+        if(!window.Hls || !window.Hls.isSupported()){ radioFail('Este navegador não toca rádios HLS.'); return; }
+        hlsInst = new window.Hls({lowLatencyMode: false});
+        hlsInst.on(window.Hls.Events.ERROR, function(e, data){
+          if(data && data.fatal && tok === radio.tok){ try{ console.warn('[rádio] erro HLS:', data.type, data.details); }catch(_){} radioFail(); }
+        });
+        hlsInst.on(window.Hls.Events.MANIFEST_PARSED, function(){ if(tok === radio.tok) playIt(); });
+        hlsInst.loadSource(st.url); hlsInst.attachMedia(radioEl);
+      }, function(){ if(tok === radio.tok) radioFail('Não consegui carregar o decodificador de rádios HLS.'); });
+    } else { radioEl.src = st.url; playIt(); }
+  }
   function staticBurst(ms){              // chiado curto ao girar o dial entre estações
     if(!soundOn) return; ensureAudio(); if(!ac) return;
     try{
@@ -1648,18 +1692,13 @@
     radio.state = 'loading'; radio.t0 = 0; radio.wantPlay = true; radio.stopping = false;
     detail.classList.remove('playing');
     staticBurst(420);
-    radioEl.src = st.url;
     radioVol();
-    var p = radioEl.play();
-    if(p && p.catch) p.catch(function(err){
-      if(err && err.name === 'AbortError') return;      // interrompido por outra troca de estação
-      radio.state = 'error'; note('Toque no play para ouvir a rádio.');
-    });
+    radioStart(st, ++radio.tok);
     if(st.uuid && radio.base){ try{ fetch(radio.base + '/json/url/' + st.uuid).catch(function(){}); }catch(e){} }   // conta a audiência no diretório
     lcdSig = ''; hifiRefresh();
   }
   function radioStopAudio(){
-    radio.stopping = true; radio.wantPlay = false;
+    radio.stopping = true; radio.wantPlay = false; radio.tok++; hlsDestroy();
     try{ radioEl.pause(); radioEl.removeAttribute('src'); radioEl.load(); }catch(e){}
     radio.state = 'idle'; radio.t0 = 0;
     if(mode === 'radio') detail.classList.remove('playing');
@@ -1677,9 +1716,7 @@
   ['waiting', 'stalled'].forEach(function(ev){ radioEl.addEventListener(ev, function(){ if(mode === 'radio' && radio.state === 'playing') radio.state = 'loading'; }); });
   radioEl.addEventListener('error', function(){
     if(mode !== 'radio' || radio.stopping || !radioEl.getAttribute('src')) return;
-    radio.state = 'error'; detail.classList.remove('playing');
-    if(radio.fails++ < 3 && radio.wantPlay){ setTimeout(function(){ if(mode === 'radio' && radio.state === 'error') radioStep(radio.dir || 1); }, 1500); }   // pula estação sem sinal
-    else note('Sem sinal. Tente outra rádio.');
+    radioFail();
   });
 
   /* ----- chaves principais ----- */
