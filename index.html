@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0705">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RetroSound">
 <title>Minha loja de discos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -362,6 +367,146 @@
   .fwa{position:absolute}
   .fwin::after{content:"";position:absolute;inset:0;box-shadow:inset 0 4px 7px rgba(0,0,0,.8),inset 0 0 9px rgba(0,0,0,.65);background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,0) 40%,rgba(0,0,0,.2))}
   .fwin:empty{background:linear-gradient(180deg,#24170e,#0f0905)}
+
+  /* ===== barra do topo: botões retrô (no lugar dos botões brancos) ===== */
+  .top{transition:top .3s ease}
+  body.has-mini .top{top:56px}
+  .right{gap:8px}
+  .pill,.icon-btn{border:1.5px solid #b8924f;background:linear-gradient(#4a3828,#2a1d12 55%,#1c130b);color:#f1dcae;
+    box-shadow:0 3px 0 #0e0905,0 4px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,235,190,.3);transition:transform .06s,box-shadow .06s,filter .15s}
+  .pill{border-radius:9px;padding:9px 14px;font-family:'Special Elite',ui-monospace,monospace;font-size:13px;font-weight:400;letter-spacing:.07em}
+  .icon-btn{border-radius:9px}
+  .pill:hover,.icon-btn:hover{filter:brightness(1.15);color:#fff3cf}
+  .pill:active,.icon-btn:active{transform:translateY(3px);box-shadow:0 0 0 #0e0905,0 1px 3px rgba(0,0,0,.5),inset 0 2px 5px rgba(0,0,0,.5)}
+  #count{padding:6px 10px;border-radius:6px;color:#ffb347;background:radial-gradient(ellipse at 50% 40%,#2a1604,#120a02);
+    box-shadow:inset 0 0 8px #000,inset 0 0 0 1px rgba(255,170,60,.25);text-shadow:0 0 6px rgba(255,160,40,.55);letter-spacing:.08em}
+  #count:empty{display:none}
+  body.camera .pill,body.camera .icon-btn{background:linear-gradient(#4a3828,#2a1d12 55%,#1c130b)}
+  @media (max-width:700px){
+    #mini{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));transform:none;max-width:none}
+    .minit{flex:1;max-width:none}
+    body.has-mini .top{top:calc(60px + env(safe-area-inset-top,0px))}
+    #mini .rtxt{padding:0 10px}
+    #miniNext{display:none}
+    #miniOpen .lg{display:none}#miniOpen .sm{display:inline}
+  }
+  #miniOpen .sm{display:none}
+  @media (hover:none){.hhot:hover:not([disabled]){box-shadow:none}}
+
+  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tapete e Rádio ===== */
+  .mhead,.mbody,.mvol,.mtabs,.msheet{display:none}
+  #splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
+    background:radial-gradient(ellipse at 50% 28%,#35210f,#0b0705 70%);color:#efe0bf}
+  #splash[hidden]{display:none}
+  .spl-logo{font:italic 800 clamp(44px,15vw,72px)/1 'Bricolage Grotesque',Georgia,serif;letter-spacing:-.03em;background:linear-gradient(#ffe6b4,#e29a3a 65%,#a8641a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
+  .spl-tag{font:400 13px/1.4 'Special Elite',ui-monospace,monospace;letter-spacing:.34em;color:#c9a05a}
+  .spl-disc{width:min(52vw,220px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#0c0a09 0 2px,#16110e 2px 4px);position:relative;box-shadow:0 14px 30px rgba(0,0,0,.7);animation:splspin 7s linear infinite}
+  .spl-disc::after{content:"";position:absolute;inset:36%;border-radius:50%;background:radial-gradient(circle,#0c0c0d 0 9%,#d83a24 10% 100%);box-shadow:0 0 0 3px rgba(0,0,0,.35)}
+  @keyframes splspin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spl-disc{animation:none}}
+  .spl-go{margin-top:6px;min-width:230px;height:54px;font-size:17px}
+  .spl-hint{max-width:280px;margin:0;font:400 12px/1.5 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.62)}
+
+  @media (max-aspect-ratio:1/1){
+    .detail{flex-direction:column;overflow:hidden;padding:0;background:#0b0705;-webkit-backdrop-filter:none;backdrop-filter:none;height:100dvh;bottom:auto}
+    .detail-inner,.hnav{display:none}
+    .hifi{display:block;position:relative;flex:none;order:2;width:100%}
+    .hfit{width:100%;aspect-ratio:2/1;overflow:hidden;background:#0b0705;border-bottom:1px solid rgba(184,146,79,.35)}
+    .mhead{display:flex;order:1;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;
+      background:linear-gradient(#22170e,#130d08);border-bottom:1px solid rgba(184,146,79,.5)}
+    .mbody{display:block;order:3;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 14px 16px;background:radial-gradient(ellipse at 50% 0,#1f140b,#0d0906 70%);color:#efe0bf}
+    .mvol{display:flex;order:4;align-items:center;gap:10px;flex:none;padding:6px 16px;background:#120c07;border-top:1px solid rgba(184,146,79,.25)}
+    .mtabs{display:grid;order:5;grid-template-columns:repeat(3,1fr);gap:6px;flex:none;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:linear-gradient(#1a110a,#0c0805);border-top:1px solid rgba(184,146,79,.55)}
+    .msheet:not([hidden]){display:flex}
+  }
+
+  .mbtn{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;padding:0;border:1.5px solid #b8924f;color:#f1dcae;
+    background:linear-gradient(#4a3828,#2a1d12 55%,#1c130b);box-shadow:0 3px 0 #0e0905,0 4px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,235,190,.3)}
+  .mbtn:active{transform:translateY(3px);box-shadow:0 0 0 #0e0905,inset 0 2px 5px rgba(0,0,0,.5)}
+  .mbtn svg{width:22px;height:22px}
+  .mtitle{display:flex;align-items:center;gap:9px;color:var(--c,#ffb347);font:700 15px/1 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.2em}
+  .mtitle[data-v="disc"]{--c:#ffb347}.mtitle[data-v="tape"]{--c:#7dffb0}.mtitle[data-v="radio"]{--c:#6bc7ff}
+  .mico svg{width:26px;height:26px;display:block;filter:drop-shadow(0 0 5px var(--c))}
+  .msc[hidden],.mnote[hidden],.moff[hidden]{display:none!important}
+  .mcard{border:1px solid rgba(184,146,79,.42);border-radius:14px;background:linear-gradient(#2a1c10,#170f08);box-shadow:inset 0 1px 0 rgba(255,225,170,.12),0 6px 16px rgba(0,0,0,.45);padding:12px}
+  .mnow{display:flex;gap:12px;align-items:center}
+  .mcov{position:relative;width:76px;height:76px;flex:none;border-radius:8px;overflow:hidden;background:#111;box-shadow:0 4px 10px rgba(0,0,0,.6)}
+  .mcov svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+  .mnowt{min-width:0;display:grid;gap:3px}
+  .mnowt b{font:700 17px/1.2 'Bricolage Grotesque',system-ui,sans-serif;color:#fff1cf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mnowt span{font-size:14px;color:#e0c590;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mnowt small{font:400 12px 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mseek{display:flex;align-items:center;gap:10px;margin:10px 2px 2px;font:400 12px 'Special Elite',ui-monospace,monospace;color:#c9a05a}
+  .mseek span{min-width:34px;text-align:center}
+  .mrange{-webkit-appearance:none;appearance:none;flex:1;width:100%;height:28px;margin:0;background:transparent;touch-action:pan-y}
+  .mrange::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(90deg,#ffb347 var(--p,0%),#3b2a1a var(--p,0%))}
+  .mrange::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8.5px;border-radius:50%;border:1px solid #3b2a12;background:radial-gradient(circle at 35% 30%,#fff3cf,#c9a05a 60%,#7a5a2a);box-shadow:0 2px 4px rgba(0,0,0,.6)}
+  .mrange::-moz-range-track{height:5px;border-radius:3px;background:linear-gradient(90deg,#ffb347 var(--p,0%),#3b2a1a var(--p,0%))}
+  .mrange::-moz-range-thumb{width:20px;height:20px;border-radius:50%;border:1px solid #3b2a12;background:radial-gradient(circle at 35% 30%,#fff3cf,#c9a05a 60%,#7a5a2a)}
+  .mctl{display:flex;justify-content:center;align-items:center;gap:12px;margin:8px 0 6px}
+  .mk{width:52px;height:52px;display:grid;place-items:center;border-radius:50%;padding:0;border:1.5px solid #b8924f;color:#f1dcae;
+    background:radial-gradient(circle at 35% 28%,#5a4631,#2b1f14 60%,#1a110a);box-shadow:0 4px 0 #0e0905,0 5px 10px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,235,190,.35)}
+  .mk svg{width:24px;height:24px}
+  .mk.sm{width:44px;height:44px}.mk.sm svg{width:20px;height:20px}
+  .mk.big{width:70px;height:70px;border-color:#ffb347;color:#ffd58a;box-shadow:0 4px 0 #0e0905,0 5px 12px rgba(0,0,0,.55),0 0 16px rgba(255,170,60,.35),inset 0 1px 0 rgba(255,235,190,.4)}
+  .mk.big svg{width:32px;height:32px}
+  .mk:active{transform:translateY(3px);box-shadow:0 1px 0 #0e0905,inset 0 2px 5px rgba(0,0,0,.5)}
+  .mk[disabled]{opacity:.35}
+  .mh{margin:14px 2px 6px;font:700 11px 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.2em;color:#c9a05a}
+  .mlist{list-style:none;margin:0;padding:0;border:1px solid rgba(184,146,79,.3);border-radius:12px;overflow:hidden;background:rgba(0,0,0,.25)}
+  .mlist li+li{border-top:1px solid rgba(184,146,79,.16)}
+  .mlist:empty{display:none}
+  .mrow{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:8px 12px;border:0;background:transparent;color:#efe0bf;text-align:left;font-size:15px}
+  .mrow .n{width:22px;text-align:center;font:400 13px 'Special Elite',ui-monospace,monospace;color:#c9a05a}
+  .mrow .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mrow .s{font:400 11px 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.55)}
+  .mrow:active{background:rgba(255,179,71,.12)}
+  .mrow.cur{background:linear-gradient(90deg,rgba(255,179,71,.22),rgba(255,179,71,.05));color:#fff1cf;box-shadow:inset 3px 0 0 #ffb347}
+  .mrow.cur .n{color:#ffb347}
+  #mbTape .mrow.cur{background:linear-gradient(90deg,rgba(125,255,176,.2),rgba(125,255,176,.04));box-shadow:inset 3px 0 0 #7dffb0}
+  #mbRadio .mrow.cur{background:linear-gradient(90deg,rgba(107,199,255,.22),rgba(107,199,255,.05));box-shadow:inset 3px 0 0 #6bc7ff}
+  .mlcd{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px;border-radius:10px;color:#6dff9a;text-shadow:0 0 6px rgba(109,255,154,.55);
+    background:radial-gradient(ellipse at 50% 40%,#0b2a18,#04120a 75%);box-shadow:inset 0 0 14px #000,0 0 0 1px rgba(125,255,176,.25);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .mlcd b{font-size:34px;letter-spacing:.06em;font-weight:600;line-height:1.1}
+  .mlcd span{font-size:12px;opacity:.85}
+  .mkeys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 8px}
+  .mkey{position:relative;display:grid;justify-items:center;gap:4px;padding:12px 4px 8px;border-radius:12px;border:1.5px solid #5a4631;color:#f1dcae;
+    background:linear-gradient(#34261a,#1c130b);box-shadow:0 4px 0 #0a0603,0 5px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,235,190,.2);transition:transform .06s,box-shadow .06s}
+  .mkey .ic svg{width:24px;height:24px;display:block}
+  .mkey small{font:700 10px 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.16em;color:#c9a05a}
+  .mkey i{position:absolute;top:6px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a2a1c;box-shadow:inset 0 1px 1px #000}
+  .mkey.on{transform:translateY(3px);box-shadow:0 1px 0 #0a0603,inset 0 3px 6px rgba(0,0,0,.65);background:linear-gradient(#241910,#150e08);border-color:#ffb347}
+  .mkey.on i{background:#ffb347;box-shadow:0 0 7px 2px rgba(255,170,60,.8)}
+  .mkey.rec{color:#ff8b78}
+  .mkey.rec.on{border-color:#ff4a3a}.mkey.rec.on i{background:#ff3a22;box-shadow:0 0 8px 3px rgba(255,60,40,.85)}
+  .mkey.on.blink i{animation:ledb 1s linear infinite}
+  .mkey:active{transform:translateY(3px);box-shadow:0 1px 0 #0a0603,inset 0 3px 6px rgba(0,0,0,.65)}
+  .mrecrow{display:flex;align-items:center;gap:10px;margin:6px 2px;font:400 12px 'Special Elite',ui-monospace,monospace;color:#c9a05a}
+  .mrecrow label{white-space:nowrap}
+  .mhelp{margin:6px 2px 0;font-size:12px;line-height:1.5;color:rgba(239,224,191,.58)}
+  .mbtn2{height:38px;padding:0 16px;border-radius:9px;border:1.5px solid #b8924f;color:#f1dcae;font:400 13px 'Special Elite',ui-monospace,monospace;letter-spacing:.06em;
+    background:linear-gradient(#4a3828,#2a1d12 55%,#1c130b);box-shadow:0 3px 0 #0e0905,inset 0 1px 0 rgba(255,235,190,.3)}
+  .mbtn2:active{transform:translateY(3px);box-shadow:none}
+  .mbtn2.wide{display:block;width:100%;margin:12px 0 4px}
+  .mst{display:grid;gap:4px;text-align:center}
+  .mst b{font:700 20px/1.2 'Bricolage Grotesque',system-ui,sans-serif;color:#fff1cf}
+  .mst span{font:400 12px 'Special Elite',ui-monospace,monospace;color:#6bc7ff;letter-spacing:.06em}
+  .mnote{margin:0 0 10px;padding:8px 12px;border-radius:8px;font-size:13px;color:#ffd58a;background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.3)}
+  .moff{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:8px 12px;border-radius:10px;font:400 13px 'Special Elite',ui-monospace,monospace;color:#c9a05a;background:rgba(0,0,0,.4);border:1px solid rgba(184,146,79,.3)}
+  .mvi svg{width:22px;height:22px;display:block;color:#c9a05a}
+  .mvol b{min-width:40px;text-align:right;font:400 12px 'Special Elite',ui-monospace,monospace;color:#c9a05a}
+  .mtab{display:grid;justify-items:center;gap:3px;padding:6px 0 4px;border:0;border-radius:10px;background:transparent;color:rgba(239,224,191,.5);font:600 11px/1 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.04em}
+  .mtab .ti svg{width:26px;height:26px;display:block}
+  .mtab[data-v="disc"]{--c:#ffb347}.mtab[data-v="tape"]{--c:#7dffb0}.mtab[data-v="radio"]{--c:#6bc7ff}
+  .mtab[aria-selected="true"]{color:var(--c);background:rgba(255,255,255,.06);box-shadow:inset 0 -2px 0 var(--c)}
+  .mtab[aria-selected="true"] .ti svg{filter:drop-shadow(0 0 5px var(--c))}
+  .msheet{position:fixed;inset:0;z-index:70;align-items:flex-end;background:rgba(0,0,0,.6)}
+  .msheetp{width:100%;display:grid;gap:8px;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));border-radius:18px 18px 0 0;background:linear-gradient(#2a1c10,#150e08);border-top:1.5px solid #b8924f}
+  .mi{min-height:48px;padding:0 14px;text-align:left;border-radius:10px;border:1px solid rgba(184,146,79,.4);background:rgba(0,0,0,.28);color:#efe0bf;font-size:15px}
+  .mi:active{background:rgba(255,179,71,.14)}
+  .mi.danger{color:#ff9d8c;border-color:rgba(255,100,80,.4)}
+  .mi.cancel{text-align:center;color:#c9a05a}
+  .mi[hidden]{display:none}
   /* ===== câmera: zoom da loja até a gaveta, mantendo o ambiente ao fundo ===== */
   .top .right{flex:none;white-space:nowrap}
   #count,.pill{white-space:nowrap}
@@ -451,11 +596,18 @@
     </nav>
   </section>
 
+  <div id="splash" hidden role="dialog" aria-modal="true" aria-label="Iniciar">
+    <div class="spl-logo">RetroSound</div>
+    <div class="spl-tag">DISCO · TAPETE · RÁDIO</div>
+    <div class="spl-disc" aria-hidden="true"></div>
+    <button class="rbtn spl-go" id="splGo" type="button">TOQUE PARA COMEÇAR</button>
+    <p class="spl-hint" id="splHint">Abre em tela cheia e ativa o som.</p>
+  </div>
   <div id="mini" hidden role="region" aria-label="Tocando agora">
     <span class="miniled"></span><div class="minit" id="miniT"></div>
     <button class="rbtn" id="miniPlay" type="button" aria-label="Tocar ou pausar">▶</button>
     <button class="rbtn" id="miniNext" type="button" aria-label="Próxima faixa">▶▶</button>
-    <button class="rbtn rtxt" id="miniOpen" type="button" title="Voltar ao toca-discos">TOCA-DISCOS</button>
+    <button class="rbtn rtxt" id="miniOpen" type="button" title="Voltar ao toca-discos"><span class="lg">TOCA-DISCOS</span><span class="sm">ABRIR</span></button>
     <button class="rbtn" id="miniStop" type="button" aria-label="Parar e guardar na gaveta" title="Parar e guardar na gaveta">■</button>
   </div>
   <main id="stage" hidden tabindex="0" role="group" aria-label="Gaveta de discos. Use as setas para folhear e Enter para tirar o disco.">
@@ -503,6 +655,78 @@
       </div>
     </div>
   </div>
+  <header class="mhead" id="mhead">
+    <button class="mbtn" id="mBack" type="button" aria-label="Voltar à gaveta"></button>
+    <div class="mtitle" id="mTitleBox" data-v="disc"><span class="mico" id="mIco"></span><b id="mTitle">DISCO</b></div>
+    <button class="mbtn" id="mMenu" type="button" aria-label="Menu"></button>
+  </header>
+  <main class="mbody" id="mbody">
+    <p class="mnote" id="mNote" role="status" hidden></p>
+    <div class="moff" id="mOff" hidden><span>Aparelho desligado</span><button class="mbtn2" id="mOn" type="button">Ligar</button></div>
+
+    <section class="msc" id="mbDisc" aria-label="Disco">
+      <div class="mcard mnow">
+        <div class="mcov" id="mCov"></div>
+        <div class="mnowt"><b id="mTrk">—</b><span id="mArt"></span><small id="mAlb"></small></div>
+      </div>
+      <div class="mseek"><span id="mCur">0:00</span><input class="mrange" id="mSeek" type="range" min="0" max="1000" value="0" aria-label="Posição da faixa"><span id="mDur">0:00</span></div>
+      <div class="mctl">
+        <button class="mk sm" id="mAlbPrev" type="button" aria-label="Disco anterior"></button>
+        <button class="mk" id="mPrev" type="button" aria-label="Faixa anterior"></button>
+        <button class="mk big" id="mPlay" type="button" aria-label="Tocar ou pausar"></button>
+        <button class="mk" id="mNext" type="button" aria-label="Próxima faixa"></button>
+        <button class="mk sm" id="mAlbNext" type="button" aria-label="Próximo disco"></button>
+      </div>
+      <h3 class="mh">FAIXAS</h3>
+      <ul class="mlist" id="mTracks"></ul>
+    </section>
+
+    <section class="msc" id="mbTape" aria-label="Tapete" hidden>
+      <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span></div>
+      <div class="mkeys">
+        <button class="mkey" id="mtRew" type="button"><i></i><span class="ic"></span><small>REW</small></button>
+        <button class="mkey" id="mtPlay" type="button"><i></i><span class="ic"></span><small>PLAY</small></button>
+        <button class="mkey" id="mtFf" type="button"><i></i><span class="ic"></span><small>FF</small></button>
+        <button class="mkey rec" id="mtRec" type="button"><i></i><span class="ic"></span><small>REC</small></button>
+        <button class="mkey" id="mtStop" type="button"><i></i><span class="ic"></span><small>STOP</small></button>
+        <button class="mkey" id="mtPause" type="button"><i></i><span class="ic"></span><small>PAUSE</small></button>
+      </div>
+      <div class="mrecrow"><label for="mtLvl">Nível de gravação</label><input class="mrange" id="mtLvl" type="range" min="0" max="100" value="50"></div>
+      <p class="mhelp">Para gravar: toque um disco, vá à tela Tapete e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
+      <h3 class="mh">MINHAS FITAS</h3>
+      <ul class="mlist" id="mTapeList"></ul>
+      <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
+    </section>
+
+    <section class="msc" id="mbRadio" aria-label="Rádio" hidden>
+      <div class="mcard mst"><b id="mRName">—</b><span id="mRInfo">—</span></div>
+      <div class="mctl">
+        <button class="mk" id="mRPrev" type="button" aria-label="Rádio anterior"></button>
+        <button class="mk big" id="mRPlay" type="button" aria-label="Tocar ou parar"></button>
+        <button class="mk" id="mRNext" type="button" aria-label="Próxima rádio"></button>
+      </div>
+      <h3 class="mh">ESTAÇÕES DO RIO GRANDE DO SUL</h3>
+      <ul class="mlist" id="mRList"></ul>
+    </section>
+  </main>
+  <div class="mvol" id="mVol"><span class="mvi" id="mVolI"></span><input class="mrange" id="mVolR" type="range" min="0" max="100" value="80" aria-label="Volume"><b id="mVolV">80%</b></div>
+  <nav class="mtabs" id="mTabs" aria-label="Telas">
+    <button class="mtab" id="mtDisc" data-v="disc" type="button" aria-selected="true"><span class="ti"></span>Disco</button>
+    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tapete</button>
+    <button class="mtab" id="mtRadio" data-v="radio" type="button" aria-selected="false"><span class="ti"></span>Rádio</button>
+  </nav>
+  <div class="msheet" id="mSheet" hidden>
+    <div class="msheetp" role="menu">
+      <button class="mi" id="msShop" type="button" role="menuitem">Voltar à loja</button>
+      <button class="mi" id="msSync" type="button" role="menuitem">Sincronizar VUs e válvulas com o som</button>
+      <button class="mi" id="msFilter" type="button" role="menuitem">Filtro de ruído: desligado</button>
+      <button class="mi" id="msPower" type="button" role="menuitem">Desligar o aparelho</button>
+      <button class="mi" id="msFull" type="button" role="menuitem">Tela cheia</button>
+      <button class="mi danger" id="msStop" type="button" role="menuitem">Parar e guardar na gaveta</button>
+      <button class="mi cancel" id="msCancel" type="button">Fechar</button>
+    </div>
+  </div>
+
   <div class="detail-inner">
     <div class="sleeve-wrap">
       <div class="vinyl" id="dVinyl"></div>
@@ -1119,6 +1343,7 @@
     opened = true; modal = 'detail'; lastFocus = document.activeElement; hideHint();
     powered = true; scene.classList.remove('off'); lcdSig = ''; lcdLast = -2; startDeck();
     showAlbum(i, !same, same);
+    mobSync();
     detail.hidden = false;
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ detail.classList.add('open'); }); });
     requestAnimationFrame(startViz);
@@ -1350,9 +1575,9 @@
   }
   hCover.style.transform = homog(300, 640, [[759,269],[968,252],[935,712],[726,664]]);
 
-  function fitScene(){ var w = hfit.clientWidth; if(w) scene.style.transform = 'scale(' + (w/HW).toFixed(5) + ')'; }
-  window.addEventListener('resize', fitScene);
-  if(window.ResizeObserver) new ResizeObserver(fitScene).observe(hfit);
+  var fitScene = function(){ var w = hfit.clientWidth; if(w) scene.style.transform = 'scale(' + (w/HW).toFixed(5) + ')'; };
+  window.addEventListener('resize', function(){ fitScene(); });
+  if(window.ResizeObserver) new ResizeObserver(function(){ fitScene(); }).observe(hfit);
 
   function pad2(n){ return ('0' + n).slice(-2); }
 
@@ -1372,6 +1597,7 @@
   function hifiCover(a){
     var h = coverHTML(a);
     hArt.innerHTML = '<div class="hcsq">' + h + '</div>';
+    var mcv = $('mCov'); if(mcv) mcv.innerHTML = h;
   }
   function hifiAlbum(a){
     hLrot.innerHTML = labelSVG(a);
@@ -1422,7 +1648,8 @@
     var L = tapeLen(); if(!L) return -1;
     var s = segAt(clamp(tape.pos, 0, L - 0.05)); return s ? s.i : -1;
   }
-  function tapeView(){ return rec.on || mode === 'tape'; }
+  function dmode(){ return isPortrait() ? (mview === 'radio' ? 'radio' : mview === 'tape' ? 'tape' : 'lp') : mode; }   // o que os visores mostram
+  function tapeView(){ return rec.on || dmode() === 'tape'; }
 
   /* ----- gravar: grava por cima do que estiver depois da cabeça ----- */
   function eraseFrom(pos){
@@ -1865,8 +2092,8 @@
   /* ----- visores ----- */
   function hLcdRender(){
     var a = PA(); if(!a) return;
-    var isTape = mode === 'tape', rows, cur, i, html = '';
-    if(mode === 'radio'){
+    var dm = dmode(), isTape = dm === 'tape', rows, cur, i, html = '';
+    if(dm === 'radio'){
       if(!radio.list.length){
         hLcd1.innerHTML = '<span class="lcdmsg" style="margin-top:2px">' + (radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS') + '</span><span class="lcdmsg">Rio Grande do Sul</span>';
         return;
@@ -1898,7 +2125,7 @@
   var lastTxt = {t: null, c: null, d: null, f: null, led: null};
   function hifiRefresh(){
     if(!hHot.hPower) return;
-    paintToggles(); paintDeck(); paintMini(); paintVleds(muted ? 0 : volume);
+    paintToggles(); paintDeck(); paintMini(); paintVleds(muted ? 0 : volume); mobRefresh();
     if(!powered){
       if(lcdSig !== 'off'){
         lcdSig = 'off'; hLcd1.innerHTML = ''; l2t.textContent = ''; l2c.textContent = ''; l2d.textContent = ''; l2fill.style.width = '0'; l2led.className = 'l2led';
@@ -1907,13 +2134,13 @@
       return;
     }
     var a = PA(); if(!a) return;
-    var n = mode === 'radio' ? radio.list.length : mode === 'tape' ? tape.segs.length : a.tracks.length, cs = mode === 'radio' ? radio.idx : mode === 'tape' ? tapeCur() : curTrack;
-    if(cs !== lcdLast || mode !== lcdLastMode){ lcdLast = cs; lcdLastMode = mode; lcdTop = clamp(cs - 2, 0, Math.max(0, n - 6)); lcdSig = ''; }
-    var sig = mode + '|' + curAlbum + '|' + curTrack + '|' + tape.segs.length + '|' + tapeCur() + '|' + lcdTop + '|' + radio.idx + '|' + radio.list.length + '|' + radio.loading;
+    var dm = dmode(), n = dm === 'radio' ? radio.list.length : dm === 'tape' ? tape.segs.length : a.tracks.length, cs = dm === 'radio' ? radio.idx : dm === 'tape' ? tapeCur() : curTrack;
+    if(cs !== lcdLast || dm !== lcdLastMode){ lcdLast = cs; lcdLastMode = dm; lcdTop = clamp(cs - 2, 0, Math.max(0, n - 6)); lcdSig = ''; }
+    var sig = dm + '|' + curAlbum + '|' + curTrack + '|' + tape.segs.length + '|' + tapeCur() + '|' + lcdTop + '|' + radio.idx + '|' + radio.list.length + '|' + radio.loading;
     if(sig !== lcdSig){ lcdSig = sig; hLcdRender(); }
 
     var line, big, small, frac, tnow = performance.now();
-    if(mode === 'radio'){
+    if(dm === 'radio'){
       var rs = radio.list[radio.idx], nr = radio.list.length;
       if(!nr) line = radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS';
       else line = (radio.state === 'loading' ? 'SINTONIZANDO ' : radio.state === 'error' ? 'SEM SINAL ' : 'RÁDIO ') + pad2(radio.idx + 1) + '/' + pad2(nr) + ' ' + rs.name;
@@ -2172,10 +2399,12 @@
   hLcd1.addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('.lcdl') : null;
     if(!b || !powered) return;
-    if(mode === 'radio') radioTune(+b.dataset.t); else if(mode === 'tape') tapeJump(+b.dataset.t); else playTrack(+b.dataset.t);
+    var dm = dmode(), ix = +b.dataset.t;
+    if(dm === 'radio'){ radio.idx = ix; if(mode !== 'radio') setSource('radio'); else radioTune(ix); }
+    else if(dm === 'tape') tapeJump(ix); else { if(mode !== 'lp') setSource('lp'); playTrack(ix); }
   });
   hLcd1.addEventListener('wheel', function(e){
-    var n = mode === 'radio' ? radio.list.length : mode === 'tape' ? tape.segs.length : (PA() ? PA().tracks.length : 0);
+    var dm = dmode(), n = dm === 'radio' ? radio.list.length : dm === 'tape' ? tape.segs.length : (PA() ? PA().tracks.length : 0);
     if(n <= 6) return;
     e.preventDefault(); lcdTop = clamp(lcdTop + (e.deltaY > 0 ? 1 : -1), 0, n - 6); lcdSig = ''; hifiRefresh();
   }, {passive:false});
@@ -2199,6 +2428,7 @@
     var m = $('mini'); if(!m) return;
     var show = bgActive && detail.hidden;
     if(m.hidden === show) m.hidden = !show;
+    document.body.classList.toggle('has-mini', show);
     if(!show) return;
     var a = PA(), t = a && a.tracks[curTrack], txt;
     var rp = mode === 'radio' ? (radio.state === 'playing' || radio.state === 'loading') : ytPlay;
@@ -2228,7 +2458,7 @@
     detail.hidden = false; lcdSig = '';
     requestAnimationFrame(function(){ requestAnimationFrame(function(){ detail.classList.add('open'); }); });
     requestAnimationFrame(startViz);
-    paintMini();
+    paintMini(); mobSync();
   }
   $('miniPlay').addEventListener('click', mainPlay);
   $('miniNext').addEventListener('click', mainNext);
@@ -2253,6 +2483,186 @@
   $('rPrev').addEventListener('click', function(){ if(mode === 'radio') radioStep(-1); });
   $('rNext').addEventListener('click', function(){ if(mode === 'radio') radioStep(1); });
 
+
+  /* =====================================================================
+     VISUAL MOBILE (vertical): telas separadas de Disco, Tapete e Rádio.
+     A "janela" no topo mostra um pedaço do mesmo aparelho do desktop (toca-discos, deck de fita, amplificador);
+     embaixo ficam os controles grandes, próprios para o toque. Na horizontal / desktop nada muda.
+     ===================================================================== */
+  var VIEWS = {disc: {x: 30, y: 285, w: 680, h: 430}, tape: {x: 1005, y: 440, w: 695, h: 355}, radio: {x: 1005, y: 40, w: 695, h: 370}};
+  var TITLES = {disc: 'DISCO', tape: 'TAPETE', radio: 'RÁDIO'};
+  var SVG = function(p, vb){ return '<svg viewBox="' + (vb || '0 0 24 24') + '" aria-hidden="true">' + p + '</svg>'; };
+  var IC = {
+    play: SVG('<path fill="currentColor" d="M8 5v14l11-7z"/>'), pause: SVG('<path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/>'),
+    prev: SVG('<path fill="currentColor" d="M6 5h2.4v14H6zM20 5v14L9.5 12z"/>'), next: SVG('<path fill="currentColor" d="M15.6 5H18v14h-2.4zM4 5v14l10.5-7z"/>'),
+    rew: SVG('<path fill="currentColor" d="M11 6v12L2 12zM22 6v12l-9-6z"/>'), ff: SVG('<path fill="currentColor" d="M13 6v12l9-6zM2 6v12l9-6z"/>'),
+    rec: SVG('<circle cx="12" cy="12" r="6.5" fill="currentColor"/>'), stop: SVG('<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/>'),
+    back: SVG('<path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'),
+    menu: SVG('<path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'),
+    vol: SVG('<path fill="currentColor" d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'),
+    disc: SVG('<circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/><circle cx="12" cy="12" r="6.3" fill="none" stroke="currentColor" stroke-width=".8" opacity=".6"/>'),
+    tape: SVG('<rect x="2.5" y="5" width="19" height="14" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 16.2h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
+    radio: SVG('<rect x="2.5" y="8" width="19" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 8L17 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 12.5h5M5.5 15.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>')
+  };
+  var mview = 'disc', mseeking = false, mmq = window.matchMedia ? window.matchMedia('(max-aspect-ratio: 1/1)') : null;
+  var mc = {txt: {}, ic: {}, sigT: '', sigTape: '', sigR: '', ridx: -1, vol: -1, lvl: -1};
+  function isPortrait(){ return !!(mmq && mmq.matches); }
+  function mTxt(id, t){ var el = $(id); if(el && mc.txt[id] !== t){ mc.txt[id] = t; el.textContent = t; } }
+  function mIcon(id, name){ var el = $(id); if(el && mc.ic[id] !== name){ mc.ic[id] = name; el.innerHTML = IC[name]; } }
+  function mInit(){
+    mIcon('mBack', 'back'); mIcon('mMenu', 'menu'); mIcon('mVolI', 'vol');
+    mIcon('mPrev', 'prev'); mIcon('mNext', 'next'); mIcon('mAlbPrev', 'rew'); mIcon('mAlbNext', 'ff');
+    mIcon('mRPrev', 'prev'); mIcon('mRNext', 'next');
+    [['mtRew', 'rew'], ['mtPlay', 'play'], ['mtFf', 'ff'], ['mtRec', 'rec'], ['mtStop', 'stop'], ['mtPause', 'pause']].forEach(function(k){ $(k[0]).querySelector('.ic').innerHTML = IC[k[1]]; });
+    [['mtDisc', 'disc'], ['mtTape', 'tape'], ['mtRadio', 'radio']].forEach(function(k){ $(k[0]).querySelector('.ti').innerHTML = IC[k[1]]; });
+  }
+  mInit();
+
+  /* qual pedaço do aparelho aparece na janela de cima */
+  fitScene = function(){
+    var w = hfit.clientWidth; if(!w) return;
+    if(isPortrait()){
+      var v = VIEWS[mview], k = w / v.w;
+      hfit.style.aspectRatio = v.w + ' / ' + v.h;
+      scene.style.transform = 'translate(' + (-v.x * k).toFixed(2) + 'px,' + (-v.y * k).toFixed(2) + 'px) scale(' + k.toFixed(5) + ')';
+    } else {
+      hfit.style.aspectRatio = '';
+      scene.style.transform = 'scale(' + (w / HW).toFixed(5) + ')';
+    }
+  };
+  function mApplyView(){
+    ['disc', 'tape', 'radio'].forEach(function(v){
+      $('mb' + v.charAt(0).toUpperCase() + v.slice(1)).hidden = v !== mview;
+      $('mt' + v.charAt(0).toUpperCase() + v.slice(1)).setAttribute('aria-selected', String(v === mview));
+    });
+    $('mTitleBox').setAttribute('data-v', mview); $('mTitle').textContent = TITLES[mview]; $('mIco').innerHTML = IC[mview];
+    var mb = $('mbody'); if(mb) mb.scrollTop = 0;
+    fitScene();
+  }
+  function mobSync(){      // a tela acompanha a fonte que está ativa
+    mview = mode === 'tape' ? 'tape' : mode === 'radio' ? 'radio' : 'disc';
+    mApplyView(); mobRefresh();
+  }
+  function mobShow(v){                       // trocar de aba só muda a tela; a música não é interrompida
+    if(v === mview) return;
+    mview = v; mApplyView();
+    if(v === 'radio' && !radio.loaded) radioLoad();     // carrega a lista de estações (sem tocar)
+    lcdSig = ''; hifiRefresh();
+  }
+  if(mmq){ var mqf = function(){ fitScene(); }; if(mmq.addEventListener) mmq.addEventListener('change', mqf); else if(mmq.addListener) mmq.addListener(mqf); }
+
+  function mRows(ul, rows, cur, click){
+    ul.innerHTML = rows.map(function(r, i){
+      return '<li><button type="button" class="mrow' + (i === cur ? ' cur' : '') + '" data-i="' + i + '"><span class="n">' + (i + 1) + '</span><span class="t">' + esc(r[0]) + '</span>' + (r[1] ? '<span class="s">' + esc(r[1]) + '</span>' : '') + '</button></li>';
+    }).join('');
+  }
+
+  function mobRefresh(){
+    if(!isPortrait() || detail.hidden || !$('mbody')) return;
+    var now = performance.now(), a = PA();
+    // aviso passageiro e aparelho desligado
+    var msg = (flashMsg && now < flashUntil) ? flashMsg : '';
+    mTxt('mNote', msg); $('mNote').hidden = !msg;
+    $('mOff').hidden = powered;
+    // volume
+    var v = muted ? 0 : volume;
+    if(mc.vol !== v){ mc.vol = v; var vr = $('mVolR'); if(document.activeElement !== vr) vr.value = v; vr.style.setProperty('--p', v + '%'); mTxt('mVolV', v + '%'); }
+    if(mview === 'disc' && a){
+      var t = a.tracks[curTrack];
+      mTxt('mTrk', t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
+      var sig = a.title + '|' + a.tracks.length + '|' + curTrack;
+      if(sig !== mc.sigT){ mc.sigT = sig; mRows($('mTracks'), a.tracks.map(function(x){ return [x.title, '']; }), curTrack); }
+      if(!mseeking){
+        var f = lpDur > 0 ? clamp(lpCur / lpDur, 0, 1) : 0, sk = $('mSeek');
+        sk.value = Math.round(f * 1000); sk.style.setProperty('--p', (f * 100).toFixed(1) + '%');
+        mTxt('mCur', fmt(lpCur)); mTxt('mDur', fmt(lpDur));
+      }
+      mIcon('mPlay', (mode === 'lp' && ytPlay) ? 'pause' : 'play');
+      $('mAlbPrev').disabled = navLock || curAlbum === 0; $('mAlbNext').disabled = navLock || curAlbum === N - 1;
+    } else if(mview === 'tape'){
+      var ns = tape.segs.length;
+      mTxt('mTapeCnt', (rec.on ? '● ' : '') + fmt(tape.pos));
+      mTxt('mTapeSub', (ns ? ns + (ns === 1 ? ' faixa' : ' faixas') + ' · ' + fmt(tapeLen()) : 'Fita vazia') + ' de ' + fmt(TAPE_CAP) + (rec.on ? ' · gravando' : mode === 'tape' && deck === 'play' ? ' · tocando' : ''));
+      var run = deck === 'play' || rec.on;
+      var on = {mtRec: rec.on, mtPlay: run, mtFf: deck === 'ff', mtRew: deck === 'rew', mtStop: false, mtPause: run && !ytPlay && powered};
+      for(var id in on) $(id).classList.toggle('on', !!on[id]);
+      $('mtRec').classList.toggle('blink', rec.on && !ytPlay);
+      var lv = $('mtLvl'); if(document.activeElement !== lv && mc.lvl !== recLevel){ mc.lvl = recLevel; lv.value = recLevel; lv.style.setProperty('--p', recLevel + '%'); }
+      var sg = ns + '|' + tapeCur() + '|' + Math.floor(tapeLen());
+      if(sg !== mc.sigTape){ mc.sigTape = sg; mRows($('mTapeList'), tape.segs.map(function(g){ return [g.title + (g.artist ? ' — ' + g.artist : ''), fmt(g.dur)]; }), tapeCur()); }
+    } else if(mview === 'radio'){
+      var rr = radio.list[radio.idx], ron = mode === 'radio';
+      mTxt('mRName', rr ? rr.name : (radio.loading ? 'Buscando rádios…' : 'Sem rádios'));
+      var stt = !ron ? 'TOQUE PARA OUVIR' : radio.state === 'playing' ? 'AO VIVO' : radio.state === 'loading' ? 'SINTONIZANDO…' : radio.state === 'error' ? 'SEM SINAL' : 'PARADA';
+      mTxt('mRInfo', stt + (rr && rr.codec ? ' · ' + rr.codec.toUpperCase() + (rr.bitrate ? ' ' + rr.bitrate + 'K' : '') : ''));
+      mIcon('mRPlay', (ron && (radio.state === 'playing' || radio.state === 'loading')) ? 'pause' : 'play');
+      var sr = radio.list.length + '|' + radio.loading;
+      if(sr !== mc.sigR){ mc.sigR = sr; mc.ridx = -1; mRows($('mRList'), radio.list.map(function(x){ return [x.name, x.codec ? x.codec.toUpperCase() + (x.bitrate ? ' ' + x.bitrate + 'K' : '') : '']; }), radio.idx); }
+      if(radio.idx !== mc.ridx){
+        var rows = $('mRList').querySelectorAll('.mrow');
+        for(var q = 0; q < rows.length; q++) rows[q].classList.toggle('cur', q === radio.idx);
+        if(mc.ridx !== -1 && rows[radio.idx] && rows[radio.idx].scrollIntoView) rows[radio.idx].scrollIntoView({block: 'nearest'});
+        mc.ridx = radio.idx;
+      }
+    }
+  }
+
+  /* ----- botões ----- */
+  function mTap(id, fn){ $(id).addEventListener('click', function(e){ playClick(/^mt(Rew|Play|Ff|Rec|Stop|Pause)$/.test(id) ? 'key' : 'btn'); fn(e); mobRefresh(); }); }
+  mTap('mBack', function(){ minimizeDetail(); });
+  mTap('mMenu', function(){ mSheetOpen(); });
+  mTap('mOn', function(){ setPower(true); });
+  $('mTabs').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mtab') : null; if(b){ playClick('tog'); mobShow(b.getAttribute('data-v')); } });
+  // disco
+  mTap('mPlay', function(){ if(!powered) return; if(mode !== 'lp' && setSource('lp') === false) return; mainPlay(); });
+  mTap('mPrev', function(){ if(mode === 'lp') mainPrev(); });
+  mTap('mNext', function(){ if(mode === 'lp') mainNext(); });
+  mTap('mAlbPrev', function(){ albumStep(-1); });
+  mTap('mAlbNext', function(){ albumStep(1); });
+  $('mTracks').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('btn'); if(mode !== 'lp') setSource('lp'); playTrack(+b.getAttribute('data-i')); mobRefresh(); } });
+  var mSeekEl = $('mSeek');
+  mSeekEl.addEventListener('input', function(){ mseeking = true; var f = mSeekEl.value / 1000; mSeekEl.style.setProperty('--p', (f * 100).toFixed(1) + '%'); mTxt('mCur', fmt(f * lpDur)); });
+  mSeekEl.addEventListener('change', function(){
+    mseeking = false;
+    if(!player || !playerReady || mode !== 'lp') return;
+    var d = 0; try{ d = player.getDuration() || 0; }catch(e){}
+    if(d){ try{ player.seekTo(mSeekEl.value / 1000 * d, true); }catch(e){} hifiTime(mSeekEl.value / 1000 * d, d); }
+  });
+  // tapete
+  mTap('mtRew', function(){ deckShuttle(-1); });
+  mTap('mtPlay', function(){ deckPlay(true); });
+  mTap('mtFf', function(){ deckShuttle(1); });
+  mTap('mtRec', function(){ if(rec.on) recStop(); else recStart(); });
+  mTap('mtStop', function(){ if(powered) deckStop(); });
+  mTap('mtPause', function(){ deckPauseKey(); });
+  mTap('mtErase', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
+  $('mtLvl').addEventListener('input', function(e){ setRecLevel(+e.target.value); mc.lvl = recLevel; e.target.style.setProperty('--p', recLevel + '%'); });
+  $('mTapeList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('btn'); tapeJump(+b.getAttribute('data-i')); mobRefresh(); } });
+  // rádio
+  mTap('mRPrev', function(){ if(!powered) return; if(mode !== 'radio') setSource('radio'); else radioStep(-1); });
+  mTap('mRNext', function(){ if(!powered) return; if(mode !== 'radio') setSource('radio'); else radioStep(1); });
+  mTap('mRPlay', function(){ if(!powered) return; if(mode !== 'radio') setSource('radio'); else radioToggle(); });
+  $('mRList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b && powered){ playClick('btn'); var ri = +b.getAttribute('data-i'); radio.idx = ri; if(mode !== 'radio') setSource('radio'); else radioTune(ri); mobRefresh(); } });
+  // volume
+  $('mVolR').addEventListener('input', function(e){ setVol(+e.target.value); mc.vol = -1; });
+  // menu (☰)
+  function mSheetOpen(){
+    $('msFilter').textContent = 'Filtro de ruído: ' + (filterOn ? 'ligado (sem ruído)' : 'desligado (com ruído)');
+    $('msPower').textContent = powered ? 'Desligar o aparelho' : 'Ligar o aparelho';
+    $('msSync').hidden = !!vReal.hidden; $('msSync').textContent = an ? 'Parar a sincronização dos VUs' : 'Sincronizar VUs e válvulas com o som';
+    $('msFull').hidden = !(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen) || !!(document.fullscreenElement || document.webkitFullscreenElement);
+    $('mSheet').hidden = false;
+  }
+  function mSheetClose(){ $('mSheet').hidden = true; }
+  $('mSheet').addEventListener('click', function(e){ if(e.target === $('mSheet')) mSheetClose(); });
+  function mItem(id, fn){ $(id).addEventListener('click', function(){ playClick('btn'); mSheetClose(); fn(); mobRefresh(); }); }
+  mItem('msShop', function(){ goShop(); });
+  mItem('msSync', function(){ if(an){ stopReal(); note('Sincronização desligada: VUs no efeito visual.'); } else { note('Escolha esta aba e marque "Compartilhar áudio da guia".'); startReal(); } });
+  mItem('msFilter', function(){ filterOn = !filterOn; });
+  mItem('msPower', function(){ setPower(!powered); });
+  mItem('msFull', function(){ goFullscreen(); });
+  mItem('msStop', function(){ closeDetail(); });
+  $('msCancel').addEventListener('click', mSheetClose);
   function sizeViz(){
     var dpr = window.devicePixelRatio || 1, w = viz.clientWidth, h = viz.clientHeight;
     if(!w) return;
@@ -2753,6 +3163,29 @@
   $('cDel').addEventListener('click', function(){ btnClick(); counterDel(); });
   $('cDots').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.cdot') : null; if(b) counterGo(+b.dataset.c); });
 
+
+  /* ---------- celular na vertical: tela de início (tela cheia + som) ---------- */
+  var splash = $('splash');
+  function inFullscreen(){
+    return !!(document.fullscreenElement || document.webkitFullscreenElement) || window.navigator.standalone === true ||
+      !!(window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+  }
+  function goFullscreen(){
+    var el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen;
+    try{ if(f){ var p = f.call(el, {navigationUI: 'hide'}); if(p && p.catch) p.catch(function(){}); } }catch(e){}
+    try{ if(window.screen && screen.orientation && screen.orientation.lock){ var q = screen.orientation.lock('portrait'); if(q && q.catch) q.catch(function(){}); } }catch(e){}
+  }
+  (function(){
+    if(!splash) return;
+    var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    if(isPortrait() && coarse && !inFullscreen()){
+      splash.hidden = false;
+      var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var can = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+      if(ios && !can) $('splHint').textContent = 'No iPhone: toque em Compartilhar › "Adicionar à Tela de Início" para abrir em tela cheia, sem as barras do navegador.';
+    }
+    $('splGo').addEventListener('click', function(){ ensureAudio(); playClick('btn'); goFullscreen(); splash.hidden = true; });
+  })();
   /* ---------- início ---------- */
   loadDrawers();
   showShop();
