@@ -393,7 +393,7 @@
   #miniOpen .sm{display:none}
   @media (hover:none){.hhot:hover:not([disabled]){box-shadow:none}}
 
-  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tapete e Rádio ===== */
+  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tape e Rádio ===== */
   .mhead,.mbody,.mvol,.mtabs,.msheet{display:none}
   #splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
     background:radial-gradient(ellipse at 50% 28%,#35210f,#0b0705 70%);color:#efe0bf}
@@ -598,7 +598,7 @@
 
   <div id="splash" hidden role="dialog" aria-modal="true" aria-label="Iniciar">
     <div class="spl-logo">RetroSound</div>
-    <div class="spl-tag">DISCO · TAPETE · RÁDIO</div>
+    <div class="spl-tag">DISCO · Tape · RÁDIO</div>
     <div class="spl-disc" aria-hidden="true"></div>
     <button class="rbtn spl-go" id="splGo" type="button">TOQUE PARA COMEÇAR</button>
     <p class="spl-hint" id="splHint">Abre em tela cheia e ativa o som.</p>
@@ -681,7 +681,7 @@
       <ul class="mlist" id="mTracks"></ul>
     </section>
 
-    <section class="msc" id="mbTape" aria-label="Tapete" hidden>
+    <section class="msc" id="mbTape" aria-label="Tape" hidden>
       <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span></div>
       <div class="mkeys">
         <button class="mkey" id="mtRew" type="button"><i></i><span class="ic"></span><small>REW</small></button>
@@ -692,7 +692,7 @@
         <button class="mkey" id="mtPause" type="button"><i></i><span class="ic"></span><small>PAUSE</small></button>
       </div>
       <div class="mrecrow"><label for="mtLvl">Nível de gravação</label><input class="mrange" id="mtLvl" type="range" min="0" max="100" value="50"></div>
-      <p class="mhelp">Para gravar: toque um disco, vá à tela Tapete e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
+      <p class="mhelp">Para gravar: toque um disco, vá à tela Tape e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
       <h3 class="mh">MINHAS FITAS</h3>
       <ul class="mlist" id="mTapeList"></ul>
       <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
@@ -712,7 +712,7 @@
   <div class="mvol" id="mVol"><span class="mvi" id="mVolI"></span><input class="mrange" id="mVolR" type="range" min="0" max="100" value="80" aria-label="Volume"><b id="mVolV">80%</b></div>
   <nav class="mtabs" id="mTabs" aria-label="Telas">
     <button class="mtab" id="mtDisc" data-v="disc" type="button" aria-selected="true"><span class="ti"></span>Disco</button>
-    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tapete</button>
+    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tape</button>
     <button class="mtab" id="mtRadio" data-v="radio" type="button" aria-selected="false"><span class="ti"></span>Rádio</button>
   </nav>
   <div class="msheet" id="mSheet" hidden>
@@ -2485,12 +2485,12 @@
 
 
   /* =====================================================================
-     VISUAL MOBILE (vertical): telas separadas de Disco, Tapete e Rádio.
+     VISUAL MOBILE (vertical): telas separadas de Disco, Tape e Rádio.
      A "janela" no topo mostra um pedaço do mesmo aparelho do desktop (toca-discos, deck de fita, amplificador);
      embaixo ficam os controles grandes, próprios para o toque. Na horizontal / desktop nada muda.
      ===================================================================== */
   var VIEWS = {disc: {x: 30, y: 285, w: 680, h: 430}, tape: {x: 1005, y: 440, w: 695, h: 355}, radio: {x: 1005, y: 40, w: 695, h: 370}};
-  var TITLES = {disc: 'DISCO', tape: 'TAPETE', radio: 'RÁDIO'};
+  var TITLES = {disc: 'DISCO', tape: 'Tape', radio: 'RÁDIO'};
   var SVG = function(p, vb){ return '<svg viewBox="' + (vb || '0 0 24 24') + '" aria-hidden="true">' + p + '</svg>'; };
   var IC = {
     play: SVG('<path fill="currentColor" d="M8 5v14l11-7z"/>'), pause: SVG('<path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/>'),
@@ -2628,7 +2628,7 @@
     var d = 0; try{ d = player.getDuration() || 0; }catch(e){}
     if(d){ try{ player.seekTo(mSeekEl.value / 1000 * d, true); }catch(e){} hifiTime(mSeekEl.value / 1000 * d, d); }
   });
-  // tapete
+  // Tape
   mTap('mtRew', function(){ deckShuttle(-1); });
   mTap('mtPlay', function(){ deckPlay(true); });
   mTap('mtFf', function(){ deckShuttle(1); });
