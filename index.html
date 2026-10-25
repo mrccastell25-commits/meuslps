@@ -386,14 +386,19 @@
     #mini{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));transform:none;max-width:none}
     .minit{flex:1;max-width:none}
     body.has-mini .top{top:calc(60px + env(safe-area-inset-top,0px))}
-    #mini .rtxt{padding:0 10px}
     #miniNext{display:none}
-    #miniOpen .lg{display:none}#miniOpen .sm{display:inline}
   }
-  #miniOpen .sm{display:none}
+  #miniOpen svg{width:22px;height:22px;display:block}
+  #sound{display:none!important}
   @media (hover:none){.hhot:hover:not([disabled]){box-shadow:none}}
 
-  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tapete e Rádio ===== */
+  /* botão de tela cheia: só em celular/tablet (toque) e só na horizontal; na vertical há o item no menu ☰ */
+  #fsBtn{position:fixed;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:60;width:42px;height:42px;padding:0;display:none;place-items:center;opacity:.92}
+  #fsBtn svg{width:22px;height:22px;display:block}
+  @media (pointer:coarse){#fsBtn:not([hidden]){display:grid}}
+  @media (max-aspect-ratio:5/4){#fsBtn{display:none!important}}
+
+  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tape Deck e Rádio ===== */
   .mhead,.mbody,.mvol,.mtabs,.msheet{display:none}
   .detail-inner{display:none!important}   /* o painel antigo foi removido: só existem o aparelho (largo) e o app (estreito) */
   #splash,#bye{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
@@ -581,7 +586,7 @@
       <button class="pill" id="editList" type="button" hidden>Trocar lista</button>
       <button class="pill" id="adminBtn" type="button">Admin</button>
       <button class="pill" id="pwBtn" type="button" style="display:none">Trocar senha</button>
-      <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado"></button>
+      <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado" hidden style="display:none"></button>
       <button class="icon-btn" id="exitBtn" type="button" aria-label="Encerrar e sair" title="Encerrar e sair"></button>
     </div>
   </header>
@@ -600,9 +605,10 @@
     </nav>
   </section>
 
+  <button class="icon-btn" id="fsBtn" type="button" hidden aria-label="Tela cheia" title="Tela cheia"></button>
   <div id="splash" hidden role="dialog" aria-modal="true" aria-label="Iniciar">
     <div class="spl-logo">RetroSound</div>
-    <div class="spl-tag">DISCO · TAPETE · RÁDIO</div>
+    <div class="spl-tag">DISCO · TAPE DECK · RÁDIO</div>
     <div class="spl-disc" aria-hidden="true"></div>
     <button class="rbtn spl-go" id="splGo" type="button">TOQUE PARA COMEÇAR</button>
     <p class="spl-hint" id="splHint">Abre em tela cheia e ativa o som.</p>
@@ -617,7 +623,7 @@
     <span class="miniled"></span><div class="minit" id="miniT"></div>
     <button class="rbtn" id="miniPlay" type="button" aria-label="Tocar ou pausar">▶</button>
     <button class="rbtn" id="miniNext" type="button" aria-label="Próxima faixa">▶▶</button>
-    <button class="rbtn rtxt" id="miniOpen" type="button" title="Voltar ao toca-discos"><span class="lg">TOCA-DISCOS</span><span class="sm">ABRIR</span></button>
+    <button class="rbtn" id="miniOpen" type="button" aria-label="Voltar ao aparelho" title="Voltar ao aparelho"></button>
     <button class="rbtn" id="miniStop" type="button" aria-label="Parar e guardar na gaveta" title="Parar e guardar na gaveta">■</button>
   </div>
   <main id="stage" hidden tabindex="0" role="group" aria-label="Gaveta de discos. Use as setas para folhear e Enter para tirar o disco.">
@@ -691,7 +697,7 @@
       <ul class="mlist" id="mTracks"></ul>
     </section>
 
-    <section class="msc" id="mbTape" aria-label="Tapete" hidden>
+    <section class="msc" id="mbTape" aria-label="Tape Deck" hidden>
       <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span></div>
       <div class="mkeys">
         <button class="mkey" id="mtRew" type="button"><i></i><span class="ic"></span><small>REW</small></button>
@@ -702,7 +708,7 @@
         <button class="mkey" id="mtPause" type="button"><i></i><span class="ic"></span><small>PAUSE</small></button>
       </div>
       <div class="mrecrow"><label for="mtLvl">Nível de gravação</label><input class="mrange" id="mtLvl" type="range" min="0" max="100" value="50"></div>
-      <p class="mhelp">Para gravar: toque um disco, vá à tela Tapete e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
+      <p class="mhelp">Para gravar: toque um disco, vá à tela Tape Deck e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
       <h3 class="mh">MINHAS FITAS</h3>
       <ul class="mlist" id="mTapeList"></ul>
       <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
@@ -722,7 +728,7 @@
   <div class="mvol" id="mVol"><span class="mvi" id="mVolI"></span><input class="mrange" id="mVolR" type="range" min="0" max="100" value="80" aria-label="Volume"><b id="mVolV">80%</b></div>
   <nav class="mtabs" id="mTabs" aria-label="Telas">
     <button class="mtab" id="mtDisc" data-v="disc" type="button" aria-selected="true"><span class="ti"></span>Disco</button>
-    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tapete</button>
+    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tape Deck</button>
     <button class="mtab" id="mtRadio" data-v="radio" type="button" aria-selected="false"><span class="ti"></span>Rádio</button>
   </nav>
   <div class="msheet" id="mSheet" hidden>
@@ -2449,8 +2455,13 @@
     if(mode === 'radio'){ var rr = radio.list[radio.idx]; txt = 'RÁDIO · ' + (rr ? rr.name : 'sintonizando…'); }
     else if(mode === 'tape'){ var g = tape.segs[tapeCur()]; txt = 'FITA · ' + (g ? g.title : 'parada'); }
     else txt = (rec.on ? '● REC · ' : '') + (t ? t.title : '') + (a ? ' · ' + a.title : '');
-    var pl = rp ? '❚❚' : '▶', key = txt + '|' + pl;
-    if(key !== miniLast){ miniLast = key; $('miniT').textContent = txt; $('miniPlay').textContent = pl; }
+    var ic = mode === 'radio' ? 'radio' : mode === 'tape' ? 'tape' : 'disc', pl = rp ? '❚❚' : '▶', key = txt + '|' + pl + '|' + ic;
+    if(key !== miniLast){
+      miniLast = key; $('miniT').textContent = txt; $('miniPlay').textContent = pl;
+      var mo = $('miniOpen'); mo.innerHTML = IC[ic];
+      var lbl = ic === 'radio' ? 'Voltar ao rádio' : ic === 'tape' ? 'Voltar ao tape deck' : 'Voltar ao toca-discos';
+      mo.title = lbl; mo.setAttribute('aria-label', lbl);
+    }
   }
   function minimizeDetail(){
     if(!opened || modal !== 'detail') return;
@@ -2499,12 +2510,12 @@
 
 
   /* =====================================================================
-     VISUAL MOBILE (vertical): telas separadas de Disco, Tapete e Rádio.
+     VISUAL MOBILE (vertical): telas separadas de Disco, Tape Deck e Rádio.
      A "janela" no topo mostra um pedaço do mesmo aparelho do desktop (toca-discos, deck de fita, amplificador);
      embaixo ficam os controles grandes, próprios para o toque. Na horizontal / desktop nada muda.
      ===================================================================== */
   var VIEWS = {disc: {x: 30, y: 285, w: 680, h: 430}, tape: {x: 1005, y: 440, w: 695, h: 355}, radio: {x: 1005, y: 40, w: 695, h: 370}};
-  var TITLES = {disc: 'DISCO', tape: 'TAPETE', radio: 'RÁDIO'};
+  var TITLES = {disc: 'DISCO', tape: 'TAPE DECK', radio: 'RÁDIO'};
   var SVG = function(p, vb){ return '<svg viewBox="' + (vb || '0 0 24 24') + '" aria-hidden="true">' + p + '</svg>'; };
   var IC = {
     play: SVG('<path fill="currentColor" d="M8 5v14l11-7z"/>'), pause: SVG('<path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/>'),
@@ -2516,6 +2527,8 @@
     vol: SVG('<path fill="currentColor" d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'),
     disc: SVG('<circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/><circle cx="12" cy="12" r="6.3" fill="none" stroke="currentColor" stroke-width=".8" opacity=".6"/>'),
     tape: SVG('<rect x="2.5" y="5" width="19" height="14" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 16.2h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
+    fson: SVG('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>'),
+    fsoff: SVG('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>'),
     power: SVG('<path d="M12 3v8.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M6.6 6.8a8 8 0 1010.8 0" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>'),
     radio: SVG('<rect x="2.5" y="8" width="19" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 8L17 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 12.5h5M5.5 15.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>')
   };
@@ -2643,7 +2656,7 @@
     var d = 0; try{ d = player.getDuration() || 0; }catch(e){}
     if(d){ try{ player.seekTo(mSeekEl.value / 1000 * d, true); }catch(e){} hifiTime(mSeekEl.value / 1000 * d, d); }
   });
-  // tapete
+  // tape deck
   mTap('mtRew', function(){ deckShuttle(-1); });
   mTap('mtPlay', function(){ deckPlay(true); });
   mTap('mtFf', function(){ deckShuttle(1); });
@@ -3190,7 +3203,12 @@
   function goFullscreen(){
     var el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen;
     try{ if(f){ var p = f.call(el, {navigationUI: 'hide'}); if(p && p.catch) p.catch(function(){}); } }catch(e){}
-    try{ if(window.screen && screen.orientation && screen.orientation.lock){ var q = screen.orientation.lock('portrait'); if(q && q.catch) q.catch(function(){}); } }catch(e){}
+    try{        // na vertical o app fica travado em pé; na horizontal deixa girar livremente
+      if(window.screen && screen.orientation){
+        if(isPortrait() && screen.orientation.lock){ var q = screen.orientation.lock('portrait'); if(q && q.catch) q.catch(function(){}); }
+        else if(screen.orientation.unlock) screen.orientation.unlock();
+      }
+    }catch(e){}
   }
   (function(){
     if(!splash) return;
@@ -3277,6 +3295,24 @@
     h('nexttrack', function(){ mainNext(); });
     h('previoustrack', function(){ mainPrev(); });
     h('stop', function(){ mainStop(); });
+  })();
+
+  /* ---------- botão de tela cheia (celular na horizontal) ---------- */
+  (function(){
+    var b = $('fsBtn'); if(!b) return;
+    var api = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    var standalone = window.navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if(!api || standalone) return;           // iPhone / app instalado: não há como alternar a tela cheia
+    b.hidden = false;
+    function paint(){
+      var on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      b.innerHTML = on ? IC.fsoff : IC.fson;
+      var l = on ? 'Sair da tela cheia' : 'Tela cheia';
+      b.title = l; b.setAttribute('aria-label', l);
+    }
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(function(ev){ document.addEventListener(ev, paint); });
+    paint();
+    b.addEventListener('click', function(){ ensureAudio(); playClick('btn'); toggleFullscreen(); });
   })();
   /* ---------- início ---------- */
   loadDrawers();
