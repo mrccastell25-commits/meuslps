@@ -196,7 +196,7 @@
 
   /* ===== cena hi-fi (telas largas): toca-discos, VUs, visores e deck de fita sobre a imagem (1725 x 894) ===== */
   .hifi{display:none}
-  @media (min-width:760px) and (min-aspect-ratio:5/4){
+  @media not all and (max-aspect-ratio:5/4){
     .detail{background:#0b0806;-webkit-backdrop-filter:none;backdrop-filter:none;padding:0}
     .detail-inner{display:none}
     .hifi{display:flex;position:fixed;inset:0;align-items:center;justify-content:center}
@@ -393,11 +393,13 @@
   #miniOpen .sm{display:none}
   @media (hover:none){.hhot:hover:not([disabled]){box-shadow:none}}
 
-  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tape e Rádio ===== */
+  /* ===== visual MOBILE (vertical): telas separadas de Disco, Tapete e Rádio ===== */
   .mhead,.mbody,.mvol,.mtabs,.msheet{display:none}
-  #splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
+  .detail-inner{display:none!important}   /* o painel antigo foi removido: só existem o aparelho (largo) e o app (estreito) */
+  #splash,#bye{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
     background:radial-gradient(ellipse at 50% 28%,#35210f,#0b0705 70%);color:#efe0bf}
-  #splash[hidden]{display:none}
+  #splash[hidden],#bye[hidden]{display:none}
+  #bye{z-index:99998}
   .spl-logo{font:italic 800 clamp(44px,15vw,72px)/1 'Bricolage Grotesque',Georgia,serif;letter-spacing:-.03em;background:linear-gradient(#ffe6b4,#e29a3a 65%,#a8641a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
   .spl-tag{font:400 13px/1.4 'Special Elite',ui-monospace,monospace;letter-spacing:.34em;color:#c9a05a}
   .spl-disc{width:min(52vw,220px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#0c0a09 0 2px,#16110e 2px 4px);position:relative;box-shadow:0 14px 30px rgba(0,0,0,.7);animation:splspin 7s linear infinite}
@@ -407,7 +409,7 @@
   .spl-go{margin-top:6px;min-width:230px;height:54px;font-size:17px}
   .spl-hint{max-width:280px;margin:0;font:400 12px/1.5 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.62)}
 
-  @media (max-aspect-ratio:1/1){
+  @media (max-aspect-ratio:5/4){
     .detail{flex-direction:column;overflow:hidden;padding:0;background:#0b0705;-webkit-backdrop-filter:none;backdrop-filter:none;height:100dvh;bottom:auto}
     .detail-inner,.hnav{display:none}
     .hifi{display:block;position:relative;flex:none;order:2;width:100%}
@@ -506,6 +508,7 @@
   .mi:active{background:rgba(255,179,71,.14)}
   .mi.danger{color:#ff9d8c;border-color:rgba(255,100,80,.4)}
   .mi.cancel{text-align:center;color:#c9a05a}
+  .mhint{margin:0 2px 2px;font-size:12px;line-height:1.45;color:rgba(239,224,191,.6)}
   .mi[hidden]{display:none}
   /* ===== câmera: zoom da loja até a gaveta, mantendo o ambiente ao fundo ===== */
   .top .right{flex:none;white-space:nowrap}
@@ -579,6 +582,7 @@
       <button class="pill" id="adminBtn" type="button">Admin</button>
       <button class="pill" id="pwBtn" type="button" style="display:none">Trocar senha</button>
       <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado"></button>
+      <button class="icon-btn" id="exitBtn" type="button" aria-label="Encerrar e sair" title="Encerrar e sair"></button>
     </div>
   </header>
 
@@ -598,10 +602,16 @@
 
   <div id="splash" hidden role="dialog" aria-modal="true" aria-label="Iniciar">
     <div class="spl-logo">RetroSound</div>
-    <div class="spl-tag">DISCO · Tape · RÁDIO</div>
+    <div class="spl-tag">DISCO · TAPETE · RÁDIO</div>
     <div class="spl-disc" aria-hidden="true"></div>
     <button class="rbtn spl-go" id="splGo" type="button">TOQUE PARA COMEÇAR</button>
     <p class="spl-hint" id="splHint">Abre em tela cheia e ativa o som.</p>
+  </div>
+  <div id="bye" hidden role="dialog" aria-modal="true" aria-label="Encerrado">
+    <div class="spl-logo">RetroSound</div>
+    <div class="spl-tag">ENCERRADO</div>
+    <p class="spl-hint">A música foi parada. Você já pode fechar esta aba ou voltar ao início.</p>
+    <button class="rbtn spl-go" id="byeGo" type="button">VOLTAR AO INÍCIO</button>
   </div>
   <div id="mini" hidden role="region" aria-label="Tocando agora">
     <span class="miniled"></span><div class="minit" id="miniT"></div>
@@ -681,7 +691,7 @@
       <ul class="mlist" id="mTracks"></ul>
     </section>
 
-    <section class="msc" id="mbTape" aria-label="Tape" hidden>
+    <section class="msc" id="mbTape" aria-label="Tapete" hidden>
       <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span></div>
       <div class="mkeys">
         <button class="mkey" id="mtRew" type="button"><i></i><span class="ic"></span><small>REW</small></button>
@@ -692,7 +702,7 @@
         <button class="mkey" id="mtPause" type="button"><i></i><span class="ic"></span><small>PAUSE</small></button>
       </div>
       <div class="mrecrow"><label for="mtLvl">Nível de gravação</label><input class="mrange" id="mtLvl" type="range" min="0" max="100" value="50"></div>
-      <p class="mhelp">Para gravar: toque um disco, vá à tela Tape e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
+      <p class="mhelp">Para gravar: toque um disco, vá à tela Tapete e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
       <h3 class="mh">MINHAS FITAS</h3>
       <ul class="mlist" id="mTapeList"></ul>
       <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
@@ -712,17 +722,19 @@
   <div class="mvol" id="mVol"><span class="mvi" id="mVolI"></span><input class="mrange" id="mVolR" type="range" min="0" max="100" value="80" aria-label="Volume"><b id="mVolV">80%</b></div>
   <nav class="mtabs" id="mTabs" aria-label="Telas">
     <button class="mtab" id="mtDisc" data-v="disc" type="button" aria-selected="true"><span class="ti"></span>Disco</button>
-    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tape</button>
+    <button class="mtab" id="mtTape" data-v="tape" type="button" aria-selected="false"><span class="ti"></span>Tapete</button>
     <button class="mtab" id="mtRadio" data-v="radio" type="button" aria-selected="false"><span class="ti"></span>Rádio</button>
   </nav>
   <div class="msheet" id="mSheet" hidden>
     <div class="msheetp" role="menu">
+      <p class="mhint">Ao sair do app, discos e fitas pausam (limite do YouTube) e voltam quando você retorna. A rádio pode continuar tocando.</p>
       <button class="mi" id="msShop" type="button" role="menuitem">Voltar à loja</button>
       <button class="mi" id="msSync" type="button" role="menuitem">Sincronizar VUs e válvulas com o som</button>
       <button class="mi" id="msFilter" type="button" role="menuitem">Filtro de ruído: desligado</button>
       <button class="mi" id="msPower" type="button" role="menuitem">Desligar o aparelho</button>
       <button class="mi" id="msFull" type="button" role="menuitem">Tela cheia</button>
       <button class="mi danger" id="msStop" type="button" role="menuitem">Parar e guardar na gaveta</button>
+      <button class="mi danger" id="msExit" type="button" role="menuitem">Encerrar e sair</button>
       <button class="mi cancel" id="msCancel" type="button">Fechar</button>
     </div>
   </div>
@@ -1621,7 +1633,7 @@
   var powered = true, filterOn = false, recLevel = 50, shuttle = 0, tapeIdx = -1, lpResume = null, ytPlay = false, lastAdv = 0;
   var radio = {tok: 0, list: [], idx: 0, loaded: false, loading: false, state: 'idle', t0: 0, fails: 0, dir: 1, wantPlay: false, stopping: false, base: ''}, radioEl = new Audio();
   radioEl.preload = 'none';
-  var saveAt = 0, lpCur = 0, lpDur = 0, lcdSig = '', lcdLast = -2, lcdLastMode = '', flashMsg = '', flashUntil = 0, deckTimer = 0, lastTick = 0;
+  var lastYtAt = 0, lastRadAt = 0, saveAt = 0, lpCur = 0, lpDur = 0, lcdSig = '', lcdLast = -2, lcdLastMode = '', flashMsg = '', flashUntil = 0, deckTimer = 0, lastTick = 0;
 
   function tapeSave(){
     try{ sessionStorage.setItem('gaveta:fita', JSON.stringify({segs: tape.segs, pos: tape.pos})); }catch(e){}
@@ -1978,6 +1990,8 @@
 
   /* ----- relógio do deck (100 ms): gravação, fita, avanço/retrocesso ----- */
   function deckTick(){
+    if(ytPlay) lastYtAt = performance.now();
+    if(mode === 'radio' && radio.state === 'playing') lastRadAt = performance.now();
     var now = performance.now(), dt = Math.min(0.5, (now - lastTick)/1000 || 0.1); lastTick = now;
     var cur = 0;
     if(player && playerReady && player.getCurrentTime){ try{ cur = player.getCurrentTime() || 0; }catch(e){} }
@@ -2125,7 +2139,7 @@
   var lastTxt = {t: null, c: null, d: null, f: null, led: null};
   function hifiRefresh(){
     if(!hHot.hPower) return;
-    paintToggles(); paintDeck(); paintMini(); paintVleds(muted ? 0 : volume); mobRefresh();
+    paintToggles(); paintDeck(); paintMini(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
     if(!powered){
       if(lcdSig !== 'off'){
         lcdSig = 'off'; hLcd1.innerHTML = ''; l2t.textContent = ''; l2c.textContent = ''; l2d.textContent = ''; l2fill.style.width = '0'; l2led.className = 'l2led';
@@ -2485,12 +2499,12 @@
 
 
   /* =====================================================================
-     VISUAL MOBILE (vertical): telas separadas de Disco, Tape e Rádio.
+     VISUAL MOBILE (vertical): telas separadas de Disco, Tapete e Rádio.
      A "janela" no topo mostra um pedaço do mesmo aparelho do desktop (toca-discos, deck de fita, amplificador);
      embaixo ficam os controles grandes, próprios para o toque. Na horizontal / desktop nada muda.
      ===================================================================== */
   var VIEWS = {disc: {x: 30, y: 285, w: 680, h: 430}, tape: {x: 1005, y: 440, w: 695, h: 355}, radio: {x: 1005, y: 40, w: 695, h: 370}};
-  var TITLES = {disc: 'DISCO', tape: 'Tape', radio: 'RÁDIO'};
+  var TITLES = {disc: 'DISCO', tape: 'TAPETE', radio: 'RÁDIO'};
   var SVG = function(p, vb){ return '<svg viewBox="' + (vb || '0 0 24 24') + '" aria-hidden="true">' + p + '</svg>'; };
   var IC = {
     play: SVG('<path fill="currentColor" d="M8 5v14l11-7z"/>'), pause: SVG('<path fill="currentColor" d="M7 5h4v14H7zM13 5h4v14h-4z"/>'),
@@ -2502,9 +2516,10 @@
     vol: SVG('<path fill="currentColor" d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'),
     disc: SVG('<circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/><circle cx="12" cy="12" r="6.3" fill="none" stroke="currentColor" stroke-width=".8" opacity=".6"/>'),
     tape: SVG('<rect x="2.5" y="5" width="19" height="14" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 16.2h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
+    power: SVG('<path d="M12 3v8.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M6.6 6.8a8 8 0 1010.8 0" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>'),
     radio: SVG('<rect x="2.5" y="8" width="19" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 8L17 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 12.5h5M5.5 15.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>')
   };
-  var mview = 'disc', mseeking = false, mmq = window.matchMedia ? window.matchMedia('(max-aspect-ratio: 1/1)') : null;
+  var mview = 'disc', mseeking = false, mmq = window.matchMedia ? window.matchMedia('(max-aspect-ratio: 5/4)') : null;
   var mc = {txt: {}, ic: {}, sigT: '', sigTape: '', sigR: '', ridx: -1, vol: -1, lvl: -1};
   function isPortrait(){ return !!(mmq && mmq.matches); }
   function mTxt(id, t){ var el = $(id); if(el && mc.txt[id] !== t){ mc.txt[id] = t; el.textContent = t; } }
@@ -2628,7 +2643,7 @@
     var d = 0; try{ d = player.getDuration() || 0; }catch(e){}
     if(d){ try{ player.seekTo(mSeekEl.value / 1000 * d, true); }catch(e){} hifiTime(mSeekEl.value / 1000 * d, d); }
   });
-  // Tape
+  // tapete
   mTap('mtRew', function(){ deckShuttle(-1); });
   mTap('mtPlay', function(){ deckPlay(true); });
   mTap('mtFf', function(){ deckShuttle(1); });
@@ -2650,7 +2665,8 @@
     $('msFilter').textContent = 'Filtro de ruído: ' + (filterOn ? 'ligado (sem ruído)' : 'desligado (com ruído)');
     $('msPower').textContent = powered ? 'Desligar o aparelho' : 'Ligar o aparelho';
     $('msSync').hidden = !!vReal.hidden; $('msSync').textContent = an ? 'Parar a sincronização dos VUs' : 'Sincronizar VUs e válvulas com o som';
-    $('msFull').hidden = !(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen) || !!(document.fullscreenElement || document.webkitFullscreenElement);
+    var fsOn = !!(document.fullscreenElement || document.webkitFullscreenElement), fsApi = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+    $('msFull').hidden = !fsApi || (!fsOn && window.navigator.standalone === true); $('msFull').textContent = fsOn ? 'Sair da tela cheia' : 'Tela cheia';
     $('mSheet').hidden = false;
   }
   function mSheetClose(){ $('mSheet').hidden = true; }
@@ -2660,7 +2676,8 @@
   mItem('msSync', function(){ if(an){ stopReal(); note('Sincronização desligada: VUs no efeito visual.'); } else { note('Escolha esta aba e marque "Compartilhar áudio da guia".'); startReal(); } });
   mItem('msFilter', function(){ filterOn = !filterOn; });
   mItem('msPower', function(){ setPower(!powered); });
-  mItem('msFull', function(){ goFullscreen(); });
+  mItem('msFull', function(){ toggleFullscreen(); });
+  mItem('msExit', function(){ exitApp(); });
   mItem('msStop', function(){ closeDetail(); });
   $('msCancel').addEventListener('click', mSheetClose);
   function sizeViz(){
@@ -3185,6 +3202,81 @@
       if(ios && !can) $('splHint').textContent = 'No iPhone: toque em Compartilhar › "Adicionar à Tela de Início" para abrir em tela cheia, sem as barras do navegador.';
     }
     $('splGo').addEventListener('click', function(){ ensureAudio(); playClick('btn'); goFullscreen(); splash.hidden = true; });
+  })();
+
+  /* ---------- sair: tela cheia, encerrar o sistema ---------- */
+  function toggleFullscreen(){
+    if(document.fullscreenElement || document.webkitFullscreenElement){
+      var ef = document.exitFullscreen || document.webkitExitFullscreen;
+      try{ if(ef){ var p = ef.call(document); if(p && p.catch) p.catch(function(){}); } }catch(e){}
+    } else goFullscreen();
+  }
+  function exitApp(){          // para tudo (disco, fita, rádio), sai da tela cheia e mostra a tela de "encerrado"
+    try{ if(bgActive || opened) closeDetail(); }catch(e){}
+    radioStopAudio(); whirStop(true); crackleOff();
+    try{ if(player && playerReady) player.stopVideo(); }catch(e){}
+    try{ if(an) stopReal(); }catch(e){}
+    try{
+      var ef = document.exitFullscreen || document.webkitExitFullscreen;
+      if((document.fullscreenElement || document.webkitFullscreenElement) && ef){ var p = ef.call(document); if(p && p.catch) p.catch(function(){}); }
+    }catch(e){}
+    try{ if('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none'; }catch(e){}
+    $('bye').hidden = false;
+    try{ window.close(); }catch(e){}        // só funciona se a aba foi aberta por script; senão, a tela de "encerrado" fica
+  }
+  $('exitBtn').innerHTML = IC.power;
+  $('exitBtn').addEventListener('click', function(){ playClick('btn'); exitApp(); });
+  $('byeGo').addEventListener('click', function(){ $('bye').hidden = true; showShop(); });
+
+  /* ---------- segundo plano: o YouTube pausa o player quando o app sai da tela; ao voltar a música retoma ---------- */
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){
+      var t = performance.now();
+      bgWas = {yt: powered && (ytPlay || t - lastYtAt < 1800), radio: powered && mode === 'radio' && (radio.state === 'playing' || radio.state === 'loading' || t - lastRadAt < 1800)};
+      return;
+    }
+    var w = bgWas; bgWas = null;
+    if(!w || !powered) return;
+    if(w.yt && !ytPlay && player && playerReady){ try{ player.playVideo(); }catch(e){} note('Música retomada.'); }
+    if(w.radio && mode === 'radio' && radioEl.paused === true) radioTune(radio.idx);
+  });
+  var bgWas = null;
+
+  /* ---------- tela de bloqueio / notificação do celular (Media Session) ---------- */
+  var msArt = null, msKey = '';
+  function msArtwork(){
+    if(msArt) return msArt;
+    try{
+      var c = document.createElement('canvas'); c.width = c.height = 256; var g = c.getContext('2d');
+      g.fillStyle = '#140d08'; g.fillRect(0, 0, 256, 256);
+      var gr = g.createRadialGradient(128, 128, 20, 128, 128, 120); gr.addColorStop(0, '#2a2018'); gr.addColorStop(1, '#0a0705');
+      g.fillStyle = gr; g.beginPath(); g.arc(128, 128, 118, 0, 6.2832); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1;
+      for(var r = 50; r < 116; r += 5){ g.beginPath(); g.arc(128, 128, r, 0, 6.2832); g.stroke(); }
+      g.fillStyle = '#e0892c'; g.beginPath(); g.arc(128, 128, 42, 0, 6.2832); g.fill();
+      g.fillStyle = '#140d08'; g.beginPath(); g.arc(128, 128, 6, 0, 6.2832); g.fill();
+      msArt = [{src: c.toDataURL('image/png'), sizes: '256x256', type: 'image/png'}];
+    }catch(e){ msArt = []; }
+    return msArt;
+  }
+  function msUpdate(){
+    if(!('mediaSession' in navigator) || !window.MediaMetadata) return;
+    var playing, title, artist = '', album = 'RetroSound';
+    if(mode === 'radio'){ var r = radio.list[radio.idx]; title = r ? r.name : 'Rádio'; artist = 'Rádio · Rio Grande do Sul'; playing = radio.state === 'playing' || radio.state === 'loading'; }
+    else if(mode === 'tape'){ var g = tape.segs[tapeCur()]; title = g ? g.title : 'Fita'; artist = g ? g.artist : ''; album = 'Minha fita'; playing = ytPlay; }
+    else { var a = PA(), t = a && a.tracks[curTrack]; title = t ? t.title : 'RetroSound'; artist = a ? (a.artist || '') : ''; album = a ? a.title : 'RetroSound'; playing = ytPlay; }
+    var key = title + '|' + artist + '|' + album;
+    if(key !== msKey){ msKey = key; try{ navigator.mediaSession.metadata = new MediaMetadata({title: title || '', artist: artist || '', album: album || '', artwork: msArtwork()}); }catch(e){} }
+    try{ navigator.mediaSession.playbackState = playing ? 'playing' : (detail.hidden && !bgActive ? 'none' : 'paused'); }catch(e){}
+  }
+  (function(){
+    if(!('mediaSession' in navigator)) return;
+    function h(n, f){ try{ navigator.mediaSession.setActionHandler(n, f); }catch(e){} }
+    h('play', function(){ if(mode === 'radio') radioPlay(); else if(mode === 'tape') deckPlay(false); else { try{ player.playVideo(); }catch(e){} } });
+    h('pause', function(){ if(mode === 'radio') radioStopAudio(); else { try{ player.pauseVideo(); }catch(e){} } });
+    h('nexttrack', function(){ mainNext(); });
+    h('previoustrack', function(){ mainPrev(); });
+    h('stop', function(){ mainStop(); });
   })();
   /* ---------- início ---------- */
   loadDrawers();
