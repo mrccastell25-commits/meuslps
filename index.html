@@ -515,6 +515,44 @@
   .mi.cancel{text-align:center;color:#c9a05a}
   .mhint{margin:0 2px 2px;font-size:12px;line-height:1.45;color:rgba(239,224,191,.6)}
   .mi[hidden]{display:none}
+
+  /* ===== controlador MIDI (só desktop) ===== */
+  #midiBtn{display:none;position:relative}
+  #midiBtn svg{width:22px;height:22px;display:block}
+  #midiBtn::after{content:"";position:absolute;right:4px;top:4px;width:8px;height:8px;border-radius:50%;background:#4a3a2c;box-shadow:inset 0 1px 1px #000}
+  #midiBtn[data-s="wait"]::after{background:#ffb347;box-shadow:0 0 6px 2px rgba(255,170,60,.7)}
+  #midiBtn[data-s="on"]::after{background:#3dffa0;box-shadow:0 0 6px 2px rgba(60,255,160,.7)}
+  #midiBtn.act::after{background:#fff;box-shadow:0 0 9px 3px #fff}
+  @media (hover:hover) and (pointer:fine) and (min-aspect-ratio:101/80){#midiBtn:not([hidden]){display:grid}}
+  #midiPanel{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.72)}
+  #midiPanel[hidden]{display:none}
+  .mdp{width:min(980px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:16px;border-radius:14px;color:#efe0bf;
+    background:linear-gradient(#2a1c10,#150e08);border:1.5px solid #b8924f;box-shadow:0 18px 50px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,225,170,.18)}
+  .mdh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .mdh b{font:700 15px 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.2em;color:#ffb347}
+  .mds{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.35);border:1px solid rgba(184,146,79,.3);font:400 13px 'Special Elite',ui-monospace,monospace}
+  .mdled{width:10px;height:10px;border-radius:50%;background:#4a3a2c;box-shadow:inset 0 1px 1px #000}
+  .mdled.wait{background:#ffb347;box-shadow:0 0 7px 2px rgba(255,170,60,.7)}
+  .mdled.on{background:#3dffa0;box-shadow:0 0 7px 2px rgba(60,255,160,.7)}
+  .mds select,.mdr select{height:34px;border-radius:7px;border:1px solid #b8924f;background:#1c130b;color:#efe0bf;font:400 13px system-ui,sans-serif;padding:0 8px}
+  .mdm{margin:10px 2px 4px;font:400 13px 'Special Elite',ui-monospace,monospace;color:#c9a05a}
+  .mdm b{color:#6dff9a;font-weight:400;text-shadow:0 0 5px rgba(109,255,154,.5)}
+  .mdnote{margin:4px 2px 8px;min-height:18px;font-size:13px;color:#ffd58a}
+  #mdMap{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:12px}
+  .mdg{padding:10px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid rgba(184,146,79,.28)}
+  .mdg h4{margin:0 0 8px;font:700 11px 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.2em;color:#c9a05a}
+  .mdr{display:grid;grid-template-columns:78px 1fr auto auto;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(184,146,79,.14)}
+  .mdr:first-of-type{border-top:0}
+  .mdn{font:700 13px 'Bricolage Grotesque',system-ui,sans-serif;color:#fff1cf}
+  .mdv{font:400 12px 'Special Elite',ui-monospace,monospace;color:#9fe8b4}
+  .mdv.none{color:rgba(239,224,191,.4)}
+  .mdr .ex{grid-column:2 / -1;display:flex;align-items:center;gap:10px;font-size:12px;color:#c9a05a}
+  .mdr .ex label{display:flex;align-items:center;gap:5px}
+  .mdr button{height:30px;padding:0 10px;font-size:12px;min-width:0}
+  .mdr.learning{background:rgba(255,179,71,.12);border-radius:8px}
+  .mdr.learning .mdv{color:#ffb347}
+  .mdf{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .mdhint{grid-column:1/-1;margin:0;font-size:12px;line-height:1.5;color:rgba(239,224,191,.6)}
   /* ===== câmera: zoom da loja até a gaveta, mantendo o ambiente ao fundo ===== */
   .top .right{flex:none;white-space:nowrap}
   #count,.pill{white-space:nowrap}
@@ -587,6 +625,7 @@
       <button class="pill" id="adminBtn" type="button">Admin</button>
       <button class="pill" id="pwBtn" type="button" style="display:none">Trocar senha</button>
       <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado" hidden style="display:none"></button>
+      <button class="icon-btn" id="midiBtn" type="button" hidden aria-label="Controlador MIDI" title="Controlador MIDI"></button>
       <button class="icon-btn" id="exitBtn" type="button" aria-label="Encerrar e sair" title="Encerrar e sair"></button>
     </div>
   </header>
@@ -605,6 +644,24 @@
     </nav>
   </section>
 
+  <div id="midiPanel" hidden role="dialog" aria-modal="true" aria-label="Controlador MIDI">
+    <div class="mdp">
+      <div class="mdh"><b>CONTROLADOR MIDI</b><button class="rbtn" id="mdClose" type="button" aria-label="Fechar">✕</button></div>
+      <div class="mds"><i id="mdLed" class="mdled"></i><span id="mdStat">—</span>
+        <select id="mdDev" aria-label="Entrada MIDI" hidden></select>
+        <button class="rbtn rtxt" id="mdAct" type="button">Ativar MIDI</button></div>
+      <div class="mdm">Última mensagem: <b id="mdLast">—</b></div>
+      <p class="mdnote" id="mdNote"></p>
+      <div id="mdMap"></div>
+      <div class="mdf" id="mdFoot" hidden>
+        <button class="rbtn rtxt" id="mdSave" type="button">Salvar no Firebase</button>
+        <button class="rbtn rtxt" id="mdUndo" type="button">Desfazer alterações</button>
+        <button class="rbtn rtxt" id="mdExp" type="button">Exportar</button>
+        <button class="rbtn rtxt" id="mdImp" type="button">Importar</button>
+        <input type="file" id="mdFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </div>
   <button class="icon-btn" id="fsBtn" type="button" hidden aria-label="Tela cheia" title="Tela cheia"></button>
   <div id="splash" hidden role="dialog" aria-modal="true" aria-label="Iniciar">
     <div class="spl-logo">RetroSound</div>
@@ -2211,6 +2268,7 @@
     hRecKnob.setAttribute('aria-valuenow', String(recLevel));
   }
   function setVol(v){
+    if(typeof midiVolDirty === 'function') midiVolDirty();      // mudou pela tela: o knob MIDI precisa alcançar de novo
     volume = clamp(Math.round(v), 0, 100); if(volume > 0) muted = false;
     try{ localStorage.setItem('gaveta:vol', String(volume)); }catch(e){}
     applyVolume();
@@ -2529,6 +2587,7 @@
     tape: SVG('<rect x="2.5" y="5" width="19" height="14" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="15.5" cy="11" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 16.2h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
     fson: SVG('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>'),
     fsoff: SVG('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>'),
+    midi: SVG('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7.2" r="1.4" fill="currentColor"/><circle cx="7.4" cy="10.2" r="1.4" fill="currentColor"/><circle cx="16.6" cy="10.2" r="1.4" fill="currentColor"/><circle cx="9" cy="15.6" r="1.4" fill="currentColor"/><circle cx="15" cy="15.6" r="1.4" fill="currentColor"/>'),
     power: SVG('<path d="M12 3v8.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M6.6 6.8a8 8 0 1010.8 0" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>'),
     radio: SVG('<rect x="2.5" y="8" width="19" height="12" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6 8L17 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 12.5h5M5.5 15.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>')
   };
@@ -2806,6 +2865,7 @@
     $('pwBtn').style.display = isAdmin ? '' : 'none';
     $('editList').style.display = isAdmin ? '' : 'none';
     renderCounterBar();
+    if(typeof midiRender === 'function') midiRender();
   }
   function setAdmin(h){ isAdmin = true; try{ localStorage.setItem('gaveta:adm', h); }catch(e){} updateAdminUI(); }
   function logoutAdmin(){ isAdmin = false; try{ localStorage.removeItem('gaveta:adm'); }catch(e){} updateAdminUI(); toast('Você saiu do admin.'); }
@@ -2881,6 +2941,7 @@
       fbDb = firebase.database();
     });
     fbReady.then(restoreAdmin).catch(function(){});
+    fbReady.then(midiLoadRemote).catch(function(e){ console.warn('MIDI: não carregou o mapeamento do Firebase', e); });
     fbReady.then(function(){ return fbDb.ref(FB_PATH).once('value'); }).then(function(snap){
       var v = snap.val(); if(!v) return;
       Object.keys(v).forEach(function(key){   // gaveta/0..N: cada balcão tem 10 (balcão 2 = 10..19)
@@ -3314,6 +3375,317 @@
     paint();
     b.addEventListener('click', function(){ ensureAudio(); playClick('btn'); toggleFullscreen(); });
   })();
+
+  /* =====================================================================
+     CONTROLADOR MIDI (só desktop, 1 controlador por vez, sem retorno de luz)
+     - qualquer controlador: o admin mapeia cada botão com "Aprender"; o perfil é guardado por nome de controlador
+       no Firebase (gaveta_admin/midi/<nome>) e em cache local;
+     - volume: começa no mínimo; o knob só assume depois de passar pelo valor atual ("pickup"), para nunca estourar o som.
+     ===================================================================== */
+  var MIDI_PATH = 'gaveta_admin/midi';
+  var MCTL = [
+    ['TAPE', 'tRec', 'REC', 'btn'], ['TAPE', 'tRew', 'REW', 'btn'], ['TAPE', 'tFf', 'FF', 'btn'], ['TAPE', 'tPlay', 'PLAY', 'btn'], ['TAPE', 'tStop', 'STOP', 'btn'], ['TAPE', 'tPause', 'PAUSE', 'btn'],
+    ['VOLUME', 'vol', 'Volume', 'knob'],
+    ['CONTROLES', 'swPower', 'POWER', 'sw'], ['CONTROLES', 'swSource', 'SOURCE', 'sw'], ['CONTROLES', 'swFilter', 'FILTER', 'sw'],
+    ['TRANSPORT', 'xPrev', 'ANTERIOR', 'btn'], ['TRANSPORT', 'xPlay', 'PLAY', 'btn'], ['TRANSPORT', 'xNext', 'PRÓXIMO', 'btn'], ['TRANSPORT', 'xStop', 'STOP', 'btn'],
+    ['RÁDIO', 'rRadio', 'RÁDIO', 'btn'],
+    ['FUNÇÕES', 'f1', 'F1', 'fn'], ['FUNÇÕES', 'f2', 'F2', 'fn'], ['FUNÇÕES', 'f3', 'F3', 'fn'], ['FUNÇÕES', 'f4', 'F4', 'fn'], ['FUNÇÕES', 'f5', 'F5', 'fn']
+  ];
+  var MCT = {}; MCTL.forEach(function(c){ MCT[c[1]] = {g: c[0], id: c[1], name: c[2], type: c[3]}; });
+  var MNAV = [['none', 'Sem função'], ['shop', 'Loja'], ['drawer', 'Gaveta'], ['device', 'Aparelho (voltar ao disco aberto)'], ['disc', 'Disco'], ['tape', 'Tape Deck'], ['radio', 'Rádio']];
+  var MNAV_DEF = {f1: 'shop', f2: 'drawer', f3: 'device', f4: 'disc', f5: 'tape'};
+  var midi = {ok: !!navigator.requestMIDIAccess, access: null, ins: [], inId: '', name: '', key: '', profiles: {}, idx: {}, learn: null, learnT: 0, last: '', dirty: false, state: 'off', err: '', toastAt: 0};
+  var mvol = {sync: false, last: null};
+
+  function midiDesktop(){ return !isPortrait() && !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches); }
+  function mKey(n){ return String(n || '').replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'controlador'; }
+  function mToast(msg, bad){ var t = performance.now(); if(t - midi.toastAt < 2500) return; midi.toastAt = t; toast(msg, bad); }
+  function mProf(){
+    if(!midi.key) return null;
+    var p = midi.profiles[midi.key];
+    if(!p){ p = midi.profiles[midi.key] = {name: midi.name, map: {}, nav: {}}; }
+    if(!p.map) p.map = {}; if(!p.nav) p.nav = {};
+    for(var k in MNAV_DEF) if(!p.nav[k]) p.nav[k] = MNAV_DEF[k];
+    return p;
+  }
+  function mClean(p){
+    var o = {name: String(p.name || ''), map: {}, nav: {}}, id;
+    for(id in p.map){ var m = p.map[id]; if(MCT[id] && m && (m.t === 'n' || m.t === 'c')) o.map[id] = {t: m.t, ch: m.ch | 0, n: m.n | 0, mode: m.mode || 'btn', inv: m.inv ? 1 : 0}; }
+    for(id in p.nav){ if(MNAV_DEF[id]) o.nav[id] = p.nav[id]; }
+    return o;
+  }
+  function mIndex(){
+    midi.idx = {}; var p = mProf(); if(!p) return;
+    for(var id in p.map){ var m = p.map[id]; if(!MCT[id] || !m) continue; var k = m.t + '|' + m.ch + '|' + m.n; (midi.idx[k] = midi.idx[k] || []).push(id); }
+  }
+  function mDesc(m){
+    if(!m) return null;
+    return (m.t === 'n' ? 'Nota ' + m.n : 'CC ' + m.n) + ' · canal ' + (m.ch + 1);
+  }
+  function mNoteName(n){ return ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][n % 12] + (Math.floor(n / 12) - 1); }
+
+  /* ---------- cache local + Firebase ---------- */
+  function mLoadLocal(){ try{ var j = JSON.parse(localStorage.getItem('gaveta:midi') || 'null'); if(j && typeof j === 'object') midi.profiles = j; }catch(e){} }
+  function mCacheLocal(){ try{ localStorage.setItem('gaveta:midi', JSON.stringify(midi.profiles)); }catch(e){} }
+  function midiLoadRemote(){
+    return fbDb.ref(MIDI_PATH).once('value').then(function(sn){
+      var v = sn.val(); if(!v) return;
+      Object.keys(v).forEach(function(k){ if(!(midi.dirty && k === midi.key)) midi.profiles[k] = v[k]; });
+      mCacheLocal(); mIndex(); midiRender();
+    });
+  }
+  function midiSave(){
+    if(!isAdmin){ toast('Só o admin pode salvar o mapeamento.', true); return; }
+    var p = mProf(); if(!p){ toast('Conecte o controlador para salvar o perfil dele.', true); return; }
+    mCacheLocal();
+    if(!fbReady){ toast('Salvo só neste navegador: o Firebase não iniciou.', true); return; }
+    fbReady.then(function(){ return fbDb.ref(MIDI_PATH + '/' + midi.key).set(mClean(p)); })
+      .then(function(){ midi.dirty = false; midi.snap = JSON.stringify(mClean(p)); toast('Mapeamento salvo no Firebase.'); midiRender(); })
+      .catch(function(e){ console.error('MIDI: falha ao salvar', e); toast('Não salvou no Firebase (' + ((e && (e.code || e.message)) || e) + '). Confira se as regras liberam gaveta_admin/midi.', true); });
+  }
+
+  /* ---------- acesso, detecção e troca de controlador ---------- */
+  function midiStart(){
+    if(!midi.ok || !midiDesktop()) return Promise.resolve();
+    if(midi.access) return Promise.resolve();
+    midi.state = 'wait'; midi.err = ''; midiRender();
+    return navigator.requestMIDIAccess({sysex: false}).then(function(a){
+      midi.access = a; a.onstatechange = midiScan; try{ localStorage.setItem('gaveta:midiok', '1'); }catch(e){}
+      midiScan();
+    }).catch(function(e){
+      midi.access = null; midi.state = 'off'; midi.err = 'perm'; midiRender();
+    });
+  }
+  function midiScan(){
+    if(!midi.access) return;
+    var ins = []; midi.access.inputs.forEach(function(i){ if(i.state !== 'disconnected') ins.push(i); });
+    midi.ins = ins;
+    var pref = ''; try{ pref = localStorage.getItem('gaveta:midiin') || ''; }catch(e){}
+    var cur = null, k;
+    for(k = 0; k < ins.length; k++) if(ins[k].id === midi.inId){ cur = ins[k]; break; }
+    if(!cur && pref) for(k = 0; k < ins.length; k++) if(ins[k].name === pref){ cur = ins[k]; break; }
+    if(!cur) cur = ins[0] || null;
+    ins.forEach(function(i){ i.onmidimessage = null; });
+    var had = !!midi.inId;
+    if(cur){
+      cur.onmidimessage = midiMsg;
+      if(cur.id !== midi.inId){
+        midi.inId = cur.id; midi.name = cur.name || 'Controlador'; midi.key = mKey(midi.name);
+        try{ localStorage.setItem('gaveta:midiin', midi.name); }catch(e){}
+        mProf(); midi.snap = JSON.stringify(mClean(midi.profiles[midi.key])); midi.dirty = false; mIndex(); midiVolReset();
+        mToast('Controlador MIDI conectado: ' + midi.name + '. Gire o volume até o mínimo para assumir o controle.');
+      }
+      midi.state = 'on';
+    } else {
+      if(had) mToast('Controlador MIDI desconectado.');
+      midi.inId = ''; midi.name = ''; midi.key = ''; midi.idx = {}; midi.state = 'wait';
+    }
+    midiRender();
+  }
+  function midiPulse(){
+    var b = $('midiBtn'); if(!b) return; b.classList.add('act'); clearTimeout(midiPulse.t); midiPulse.t = setTimeout(function(){ b.classList.remove('act'); }, 140);
+  }
+
+  /* ---------- entrada de mensagens ---------- */
+  function midiMsg(e){
+    var d = e.data; if(!d || d.length < 2) return;
+    var st = d[0] & 0xF0, ch = d[0] & 0x0F, n = d[1], v = d.length > 2 ? d[2] : 0, t, on;
+    if(st === 0x90){ t = 'n'; on = v > 0; }
+    else if(st === 0x80){ t = 'n'; on = false; v = 0; }
+    else if(st === 0xB0){ t = 'c'; on = v >= 64; }
+    else return;                                     // relógio, sensores e afins são ignorados
+    midi.last = (t === 'n' ? 'Nota ' + n + ' (' + mNoteName(n) + ')' : 'CC ' + n) + ' · canal ' + (ch + 1) + ' · valor ' + v;
+    midiPulse();
+    var lm = $('mdLast'); if(lm) lm.textContent = midi.last;
+    if(midi.learn){ if(t === 'n' && !on) return; midiLearnDone(t, ch, n); return; }
+    if(!midiDesktop()) return;
+    var ids = midi.idx[t + '|' + ch + '|' + n]; if(!ids) return;
+    ids.forEach(function(id){ midiHandle(id, t, on, v); });
+  }
+  function midiHandle(id, t, on, v){
+    var p = mProf(), m = p && p.map[id], c = MCT[id]; if(!m || !c) return;
+    if(c.type === 'knob'){ if(t === 'c') midiVolume(v); return; }
+    if(c.type === 'sw' && m.mode !== 'tog'){ midiSwitch(id, m.inv ? !on : on); return; }
+    if(on){ if(!m._dn){ m._dn = true; midiPress(id); } } else m._dn = false;     // botão: só no apertar
+  }
+  function midiCtx(){ return (opened && modal === 'detail') || bgActive; }
+  function midiNeedDisc(){ if(!midiCtx()){ mToast('Abra um disco primeiro para usar o aparelho.'); return false; } return true; }
+
+  /* ---------- volume: começa no mínimo; o knob assume só depois de passar pelo valor atual ---------- */
+  function setVolMidi(v){ volume = clamp(Math.round(v), 0, 100); if(volume > 0) muted = false; applyVolume(); }    // não grava no navegador
+  function midiVolReset(){ mvol.sync = false; mvol.last = null; setVolMidi(0); }
+  function midiVolDirty(){ mvol.sync = false; mvol.last = null; }          // mudou pela tela: o knob precisa alcançar de novo
+  function midiVolume(raw){
+    var v = Math.round(raw / 127 * 100), tgt = muted ? 0 : volume;
+    if(!mvol.sync){
+      var crossed = mvol.last !== null && (mvol.last - tgt) * (v - tgt) <= 0;
+      if(Math.abs(v - tgt) <= 2 || crossed) mvol.sync = true;
+      else { mvol.last = v; return; }
+    }
+    mvol.last = v; setVolMidi(v);
+  }
+
+  /* ---------- ações ---------- */
+  function midiSwitch(id, pos){
+    if(!midiNeedDisc()) return;
+    if(id === 'swPower') setPower(pos);
+    else if(id === 'swSource'){ if(powered){ var tg = pos ? 'lp' : 'tape'; if(mode !== tg) setSource(tg); } }
+    else if(id === 'swFilter') filterOn = pos;
+    playClick('tog');
+  }
+  function midiPress(id){
+    var c = MCT[id], p = mProf();
+    if(c.type === 'sw'){ // alavanca em modo "alternar"
+      if(id === 'swPower') midiSwitch(id, !powered);
+      else if(id === 'swSource') midiSwitch(id, mode !== 'lp');
+      else midiSwitch(id, !filterOn);
+      return;
+    }
+    if(c.type === 'fn'){ playClick('btn'); midiNav(p.nav[id]); return; }
+    if(!midiNeedDisc()) return;
+    playClick('key');
+    switch(id){
+      case 'tRec': if(rec.on) recStop(); else recStart(); break;
+      case 'tRew': deckShuttle(-1); break;
+      case 'tFf': deckShuttle(1); break;
+      case 'tPlay': deckPlay(false); break;
+      case 'tStop': if(powered) deckStop(); break;
+      case 'tPause': deckPauseKey(); break;
+      case 'xPrev': mainPrev(); break;
+      case 'xPlay': mainPlay(); break;
+      case 'xNext': mainNext(); break;
+      case 'xStop': mainStop(); break;
+      case 'rRadio': if(powered) setSource(mode === 'radio' ? 'lp' : 'radio'); break;
+    }
+  }
+  function midiNav(act){
+    var inDev = opened && modal === 'detail';
+    if(!act || act === 'none') return;
+    if(act === 'shop'){ if(inDev) goShop(); else if(curDrawer >= 0) showShop(); return; }
+    if(act === 'drawer'){ if(inDev) minimizeDetail(); return; }
+    if(act === 'device'){ if(!inDev){ if(bgActive) restoreDetail(); else mToast('Nenhum disco aberto.'); } return; }
+    if(!inDev){ if(bgActive) restoreDetail(); else { mToast('Abra um disco primeiro.'); return; } }
+    setSource(act === 'disc' ? 'lp' : act);
+  }
+
+  /* ---------- aprender (MIDI learn) ---------- */
+  function midiLearnStart(id){
+    if(!isAdmin){ toast('Só o admin pode mapear o controlador.', true); return; }
+    if(!midi.key){ toast('Conecte um controlador MIDI primeiro.', true); return; }
+    midi.learn = id; clearTimeout(midi.learnT);
+    midi.learnT = setTimeout(function(){ if(midi.learn){ midi.learn = null; midiRender(); } }, 15000);
+    midiRender();
+  }
+  function midiLearnDone(t, ch, n){
+    var id = midi.learn, p = mProf(); midi.learn = null; clearTimeout(midi.learnT);
+    if(!p || !id){ midiRender(); return; }
+    for(var o in p.map){ var m = p.map[o]; if(o !== id && m && m.t === t && m.ch === ch && m.n === n){ midi.note = 'Esse controle já é usado por "' + MCT[o].name + '" (' + MCT[o].g + '). Limpe-o antes de reaproveitar.'; midiRender(); return; } }
+    var old = p.map[id], c = MCT[id];
+    p.map[id] = {t: t, ch: ch, n: n, mode: old && old.mode ? old.mode : (c.type === 'sw' ? 'pos' : c.type === 'knob' ? 'abs' : 'btn'), inv: old && old.inv ? 1 : 0};
+    midi.note = c.name + ' (' + c.g + ') ← ' + mDesc(p.map[id]); mDirty(); mIndex(); midiRender();
+  }
+  function mDirty(){ var p = mProf(); midi.dirty = !!p && JSON.stringify(mClean(p)) !== midi.snap; }
+
+  /* ---------- tela do gerenciador ---------- */
+  function midiRender(){
+    var b = $('midiBtn');
+    if(b){ b.hidden = !midi.ok; b.setAttribute('data-s', midi.state); b.title = 'Controlador MIDI' + (midi.name ? ': ' + midi.name : ''); }
+    var panel = $('midiPanel'); if(!panel || panel.hidden) return;
+    var stat = !midi.ok ? 'Este navegador não tem Web MIDI (use Chrome ou Edge no computador).'
+      : midi.err === 'perm' ? 'Permissão negada. Libere o MIDI no cadeado da barra de endereço e tente de novo.'
+      : !midi.access ? 'MIDI desativado. Clique em "Ativar MIDI" e permita o acesso.'
+      : midi.name ? 'Conectado: ' + midi.name : 'Nenhum controlador encontrado. Conecte um e aguarde.';
+    $('mdStat').textContent = stat; $('mdLed').className = 'mdled ' + (midi.name ? 'on' : midi.access ? 'wait' : '');
+    $('mdAct').hidden = !midi.ok || !!midi.access;
+    var dv = $('mdDev'); dv.hidden = midi.ins.length < 2;
+    if(!dv.hidden){ dv.innerHTML = midi.ins.map(function(i){ return '<option value="' + esc(i.id) + '"' + (i.id === midi.inId ? ' selected' : '') + '>' + esc(i.name) + '</option>'; }).join(''); }
+    $('mdLast').textContent = midi.last || '—';
+    $('mdNote').textContent = midi.note || (isAdmin ? '' : 'Entre como admin (botão Admin) para editar o mapeamento.');
+    var map = $('mdMap'), foot = $('mdFoot'), p = mProf();
+    foot.hidden = !isAdmin || !p;
+    if(!isAdmin){ map.innerHTML = ''; return; }
+    if(!p){ map.innerHTML = '<p class="mdhint">Conecte o controlador para mapear os botões. O mapeamento é guardado por controlador.</p>'; return; }
+    var groups = {}, order = [];
+    MCTL.forEach(function(c){ if(!groups[c[0]]){ groups[c[0]] = []; order.push(c[0]); } groups[c[0]].push(c[1]); });
+    map.innerHTML = order.map(function(g){
+      return '<div class="mdg"><h4>' + esc(g) + '</h4>' + groups[g].map(function(id){
+        var c = MCT[id], m = p.map[id], ex = '';
+        if(c.type === 'sw'){
+          ex = '<div class="ex"><select class="mdmode" aria-label="Modo"><option value="pos"' + (!m || m.mode !== 'tog' ? ' selected' : '') + '>2 posições</option><option value="tog"' + (m && m.mode === 'tog' ? ' selected' : '') + '>Alternar a cada toque</option></select><label><input type="checkbox" class="mdinv"' + (m && m.inv ? ' checked' : '') + '> inverter</label></div>';
+        } else if(c.type === 'fn'){
+          ex = '<div class="ex"><span>Ação:</span><select class="mdnav">' + MNAV.map(function(a){ return '<option value="' + a[0] + '"' + (p.nav[id] === a[0] ? ' selected' : '') + '>' + esc(a[1]) + '</option>'; }).join('') + '</select></div>';
+        } else if(c.type === 'knob'){
+          ex = '<div class="ex">O volume começa no mínimo e o knob só assume depois de passar pelo valor atual.</div>';
+        }
+        return '<div class="mdr' + (midi.learn === id ? ' learning' : '') + '" data-id="' + id + '"><span class="mdn">' + esc(c.name) + '</span>'
+          + '<span class="mdv' + (m ? '' : ' none') + '">' + (midi.learn === id ? 'Mexa no controle…' : (mDesc(m) || 'não mapeado')) + '</span>'
+          + '<button class="rbtn rtxt mdl" type="button">Aprender</button><button class="rbtn rtxt mdc" type="button">Limpar</button>' + ex + '</div>';
+      }).join('') + '</div>';
+    }).join('');
+    $('mdSave').textContent = midi.dirty ? 'Salvar no Firebase •' : 'Salvar no Firebase';
+  }
+  function midiOpen(){
+    $('midiPanel').hidden = false; midi.note = '';
+    if(midi.ok && !midi.access) midiStart();
+    midiRender();
+  }
+  function midiClose(){ if(midi.learn){ midi.learn = null; clearTimeout(midi.learnT); } $('midiPanel').hidden = true; }
+  $('midiBtn').innerHTML = IC.midi;
+  $('midiBtn').addEventListener('click', function(){ playClick('btn'); midiOpen(); });
+  $('mdClose').addEventListener('click', midiClose);
+  $('midiPanel').addEventListener('click', function(e){ if(e.target === $('midiPanel')) midiClose(); });
+  $('mdAct').addEventListener('click', function(){ midiStart(); });
+  $('mdDev').addEventListener('change', function(e){
+    var id = e.target.value; midi.inId = ''; try{ localStorage.setItem('gaveta:midiin', (midi.ins.filter(function(i){ return i.id === id; })[0] || {}).name || ''); }catch(_){}
+    midiScan();
+  });
+  $('mdMap').addEventListener('click', function(e){
+    var row = e.target.closest ? e.target.closest('.mdr') : null; if(!row) return;
+    var id = row.getAttribute('data-id'), p = mProf(); if(!p) return;
+    if(e.target.classList.contains('mdl')){ midi.note = ''; midiLearnStart(id); }
+    else if(e.target.classList.contains('mdc')){ delete p.map[id]; midi.note = MCT[id].name + ' limpo.'; mDirty(); mIndex(); midiRender(); }
+  });
+  $('mdMap').addEventListener('change', function(e){
+    var row = e.target.closest ? e.target.closest('.mdr') : null; if(!row) return;
+    var id = row.getAttribute('data-id'), p = mProf(); if(!p) return;
+    if(e.target.classList.contains('mdnav')) p.nav[id] = e.target.value;
+    else if(e.target.classList.contains('mdmode')){ if(p.map[id]) p.map[id].mode = e.target.value; else mToast('Aprenda o controle primeiro.'); }
+    else if(e.target.classList.contains('mdinv')){ if(p.map[id]) p.map[id].inv = e.target.checked ? 1 : 0; else { e.target.checked = false; mToast('Aprenda o controle primeiro.'); } }
+    mDirty(); midiRender();
+  });
+  $('mdSave').addEventListener('click', midiSave);
+  $('mdUndo').addEventListener('click', function(){
+    var p = mProf(); if(!p) return;
+    try{ midi.profiles[midi.key] = JSON.parse(midi.snap); }catch(e){} mProf(); midi.dirty = false; midi.note = 'Alterações desfeitas.'; mIndex(); midiRender();
+  });
+  $('mdExp').addEventListener('click', function(){
+    var p = mProf(); if(!p) return;
+    var blob = new Blob([JSON.stringify(mClean(p), null, 2)], {type: 'application/json'}), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'midi-' + midi.key + '.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  });
+  $('mdImp').addEventListener('click', function(){ $('mdFile').click(); });
+  $('mdFile').addEventListener('change', function(e){
+    var f = e.target.files && e.target.files[0]; e.target.value = ''; if(!f || !midi.key) return;
+    var r = new FileReader();
+    r.onload = function(){
+      try{ var j = JSON.parse(r.result); midi.profiles[midi.key] = {name: midi.name, map: j.map || {}, nav: j.nav || {}}; mProf(); mDirty(); mIndex(); midi.note = 'Mapeamento importado. Clique em Salvar para guardar no Firebase.'; midiRender(); }
+      catch(err){ toast('Arquivo inválido.', true); }
+    };
+    r.readAsText(f);
+  });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !$('midiPanel').hidden){ midiClose(); e.stopPropagation(); } }, true);
+
+  mLoadLocal();
+  /* ativa sozinho se o navegador já tem a permissão (ou se já foi ativado antes); senão, só pelo botão MIDI */
+  (function(){
+    if(!midi.ok || !midiDesktop()) return;
+    var was = false; try{ was = localStorage.getItem('gaveta:midiok') === '1'; }catch(e){}
+    var go = function(){ midiStart(); };
+    if(navigator.permissions && navigator.permissions.query){
+      navigator.permissions.query({name: 'midi', sysex: false}).then(function(ps){ if(ps.state === 'granted') go(); }).catch(function(){ if(was) go(); });
+    } else if(was) go();
+  })();
+  midiRender();
   /* ---------- início ---------- */
   loadDrawers();
   showShop();
