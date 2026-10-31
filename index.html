@@ -389,7 +389,6 @@
     #miniNext{display:none}
   }
   #miniOpen svg{width:22px;height:22px;display:block}
-  #sound{display:none!important}
   @media (hover:none){.hhot:hover:not([disabled]){box-shadow:none}}
 
   /* botão de tela cheia: só em celular/tablet (toque) e só na horizontal; na vertical há o item no menu ☰ */
@@ -402,17 +401,10 @@
   .mhead,.mbody,.mvol,.mtabs,.msheet{display:none}
   .detail-inner{display:none!important}   /* o painel antigo foi removido: só existem o aparelho (largo) e o app (estreito) */
   #splash,#bye{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
-    background:radial-gradient(ellipse at 50% 28%,#35210f,#0b0705 70%);color:#efe0bf}
+    background:radial-gradient(ellipse at 50% 40%,#2b1b0e,#0b0705 70%);color:#efe0bf}
   #splash[hidden],#bye[hidden]{display:none}
   #bye{z-index:99998}
-  .spl-logo{font:italic 800 clamp(44px,15vw,72px)/1 'Bricolage Grotesque',Georgia,serif;letter-spacing:-.03em;background:linear-gradient(#ffe6b4,#e29a3a 65%,#a8641a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
-  .spl-tag{font:400 13px/1.4 'Special Elite',ui-monospace,monospace;letter-spacing:.34em;color:#c9a05a}
-  .spl-disc{width:min(52vw,220px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#0c0a09 0 2px,#16110e 2px 4px);position:relative;box-shadow:0 14px 30px rgba(0,0,0,.7);animation:splspin 7s linear infinite}
-  .spl-disc::after{content:"";position:absolute;inset:36%;border-radius:50%;background:radial-gradient(circle,#0c0c0d 0 9%,#d83a24 10% 100%);box-shadow:0 0 0 3px rgba(0,0,0,.35)}
-  @keyframes splspin{to{transform:rotate(360deg)}}
-  @media (prefers-reduced-motion:reduce){.spl-disc{animation:none}}
   .spl-go{margin-top:6px;min-width:230px;height:54px;font-size:17px}
-  .spl-hint{max-width:280px;margin:0;font:400 12px/1.5 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.62)}
 
   @media (max-aspect-ratio:5/4){
     .detail{flex-direction:column;overflow:hidden;padding:0;background:#0b0705;-webkit-backdrop-filter:none;backdrop-filter:none;height:100dvh;bottom:auto}
@@ -515,6 +507,20 @@
   .mi.cancel{text-align:center;color:#c9a05a}
   .mhint{margin:0 2px 2px;font-size:12px;line-height:1.45;color:rgba(239,224,191,.6)}
   .mi[hidden]{display:none}
+
+  /* atalhos Rádio / Tape Deck na loja (celular) */
+  #qbar{display:none}
+  @media (max-aspect-ratio:5/4){
+    #qbar{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:5;display:flex;gap:10px;padding:8px 10px;border-radius:12px;
+      background:linear-gradient(#3a2a1d,#1c130c);border:1.5px solid #b8924f;box-shadow:0 8px 22px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,225,170,.25),inset 0 -2px 4px rgba(0,0,0,.5);transition:opacity .35s}
+    #shop.zoomed #qbar{opacity:0;pointer-events:none}
+    #qbar .rbtn{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 14px;font-size:13px;white-space:nowrap;min-width:0;flex:1 1 0}
+    #qbar{width:calc(100vw - 32px);max-width:420px}
+    #qbar .qi svg{width:22px;height:22px;display:block}
+    #cbar{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  }
+  .byet{font:700 22px 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.3em;color:#ffb347}
+  .byeh{max-width:300px;margin:0;font:400 13px/1.5 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.65)}
 
   /* ===== controlador MIDI (só desktop) ===== */
   #midiBtn{display:none;position:relative}
@@ -624,7 +630,7 @@
       <button class="pill" id="editList" type="button" hidden>Trocar lista</button>
       <button class="pill" id="adminBtn" type="button">Admin</button>
       <button class="pill" id="pwBtn" type="button" style="display:none">Trocar senha</button>
-      <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado" hidden style="display:none"></button>
+      <button class="icon-btn" id="sound" type="button" aria-pressed="true" aria-label="Som de folhear: ligado"></button>
       <button class="icon-btn" id="midiBtn" type="button" hidden aria-label="Controlador MIDI" title="Controlador MIDI"></button>
       <button class="icon-btn" id="exitBtn" type="button" aria-label="Encerrar e sair" title="Encerrar e sair"></button>
     </div>
@@ -641,6 +647,10 @@
       <button class="rbtn" id="cNext" type="button" aria-label="Próximo balcão" title="Próximo balcão">▶</button>
       <button class="rbtn rtxt" id="cAdd" type="button" hidden title="Criar um novo balcão com 10 gavetas">+ NOVO</button>
       <button class="rbtn rtxt" id="cDel" type="button" hidden title="Remover este balcão (vazio)">– REMOVER</button>
+    </nav>
+    <nav id="qbar" aria-label="Rádio e Tape Deck">
+      <button class="rbtn" id="qRadio" type="button"><span class="qi"></span>Rádio</button>
+      <button class="rbtn" id="qTape" type="button"><span class="qi"></span>Tape Deck</button>
     </nav>
   </section>
 
@@ -664,16 +674,11 @@
   </div>
   <button class="icon-btn" id="fsBtn" type="button" hidden aria-label="Tela cheia" title="Tela cheia"></button>
   <div id="splash" hidden role="dialog" aria-modal="true" aria-label="Iniciar">
-    <div class="spl-logo">RetroSound</div>
-    <div class="spl-tag">DISCO · TAPE DECK · RÁDIO</div>
-    <div class="spl-disc" aria-hidden="true"></div>
-    <button class="rbtn spl-go" id="splGo" type="button">TOQUE PARA COMEÇAR</button>
-    <p class="spl-hint" id="splHint">Abre em tela cheia e ativa o som.</p>
+    <button class="rbtn spl-go" id="splGo" type="button">ENTRAR</button>
   </div>
   <div id="bye" hidden role="dialog" aria-modal="true" aria-label="Encerrado">
-    <div class="spl-logo">RetroSound</div>
-    <div class="spl-tag">ENCERRADO</div>
-    <p class="spl-hint">A música foi parada. Você já pode fechar esta aba ou voltar ao início.</p>
+    <div class="byet">ENCERRADO</div>
+    <p class="byeh">A música foi parada. Você já pode fechar esta aba ou voltar ao início.</p>
     <button class="rbtn spl-go" id="byeGo" type="button">VOLTAR AO INÍCIO</button>
   </div>
   <div id="mini" hidden role="region" aria-label="Tocando agora">
@@ -766,7 +771,7 @@
       </div>
       <div class="mrecrow"><label for="mtLvl">Nível de gravação</label><input class="mrange" id="mtLvl" type="range" min="0" max="100" value="50"></div>
       <p class="mhelp">Para gravar: toque um disco, vá à tela Tape Deck e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
-      <h3 class="mh">MINHAS FITAS</h3>
+      <h3 class="mh">MINHA FITA</h3>
       <ul class="mlist" id="mTapeList"></ul>
       <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
     </section>
@@ -796,6 +801,7 @@
       <button class="mi" id="msFilter" type="button" role="menuitem">Filtro de ruído: desligado</button>
       <button class="mi" id="msPower" type="button" role="menuitem">Desligar o aparelho</button>
       <button class="mi" id="msFull" type="button" role="menuitem">Tela cheia</button>
+      <button class="mi" id="msSound" type="button" role="menuitem">Som de cliques e folhear: ligado</button>
       <button class="mi danger" id="msStop" type="button" role="menuitem">Parar e guardar na gaveta</button>
       <button class="mi danger" id="msExit" type="button" role="menuitem">Encerrar e sair</button>
       <button class="mi cancel" id="msCancel" type="button">Fechar</button>
@@ -1289,12 +1295,13 @@
   var tPrev = $('tPrev'), tNext = $('tNext'), aPrev = $('aPrev'), aNext = $('aNext');
   var curAlbum = 0, curTrack = 0, lastFocus = null;
   var pa = null, bgActive = false, navLock = false;   // pa = disco que está tocando (não muda ao folhear outras gavetas)
-  function PA(){ return pa || albums[curAlbum]; }
+  var EMPTY_ALBUM = {title: '', artist: '', tracks: [], p: ['#1b1511', '#3a2a1c', '#6b4b2a', '#c9a05a']};   // aparelho aberto sem disco escolhido
+  function PA(){ return pa || albums[curAlbum] || EMPTY_ALBUM; }
   function sameAlbum(x, y){ return !!x && !!y && x.title === y.title && x.tracks.length === y.tracks.length && x.tracks[0].id === y.tracks[0].id; }
 
   window.onYouTubeIframeAPIReady = function(){
     apiReady = true;
-    if(pendingId && opened && modal === 'detail'){ var id = pendingId; pendingId = null; makePlayer(id); }
+    if(pendingId && opened && modal === 'detail'){ var id = pendingId; if(typeof id === 'string'){ pendingId = null; makePlayer(id); } else makePlayer(id.videoId); }   // objeto = trecho da fita: o onReady carrega
   };
   if(window.YT && window.YT.Player) apiReady = true;
   function makePlayer(id){
@@ -1751,6 +1758,7 @@
   function recStart(){
     if(!powered) return;
     if(mode === 'radio'){ note('Não dá para gravar a rádio: o navegador não captura o áudio dela.'); return; }
+    if(!PA().tracks.length){ note('Escolha um disco na loja para gravar.'); return; }
     if(mode !== 'lp' && setSource('lp') === false) return;
     eraseFrom(tape.pos); tape.pos = tapeLen();
     if(tape.pos >= TAPE_CAP - 1){ note('A fita está cheia. Volte ao começo (REW) para regravar.'); return; }
@@ -1792,13 +1800,20 @@
   function tapeHalt(){ if(deck === 'play' || deck === 'ff' || deck === 'rew') deck = 'stop'; shuttle = 0; }
 
   /* ----- reprodução da fita ----- */
+  function playTapeVideo(opts){        // funciona também sem disco aberto: cria o player se ainda não existe
+    try{
+      if(player && playerReady){ player.loadVideoById(opts); return; }
+      pendingId = opts;                 // o onReady carrega este trecho
+      if(!player && apiReady) makePlayer(opts.videoId);
+      else if(!apiReady) note('Carregando o player do YouTube…');
+    }catch(e){}
+  }
   function playTapeAt(pos){
     var L = tapeLen(); if(!L) return;
     var s = segAt(clamp(pos, 0, L - 0.05)); if(!s) return;
     tapeIdx = s.i; var g = tape.segs[s.i]; tape.pos = segOffset(s.i) + s.off;
     mode = 'tape'; deck = 'play'; shuttle = 0; ytPlay = false; lastAdv = Date.now();
-    if(!(player && playerReady)){ note('O player ainda está carregando. Tente de novo em instantes.'); return; }
-    try{ player.loadVideoById({videoId: g.vid, startSeconds: g.start + s.off, endSeconds: g.start + g.dur}); }catch(e){}
+    playTapeVideo({videoId: g.vid, startSeconds: g.start + s.off, endSeconds: g.start + g.dur});
     detail.classList.remove('playing');
   }
   function tapeAdvance(){
@@ -2134,10 +2149,17 @@
     });
   }
   var CLK = {key: [1, 0.95], btn: [1.1, 0.7], tog: [0.88, 0.8], nav: [1.22, 0.5], rel: [1, 0.9]};
+  function uiTick(){                   // clique "normal" de menu (curto e suave), diferente da tecla do equipamento
+    var t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(1700, t0); o.frequency.exponentialRampToValueAtTime(800, t0 + 0.035);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+    o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 0.07);
+  }
   function playClick(kind){
     if(!soundOn) return;
     ensureAudio(); if(!ac) return;
     try{ if(ac.state === 'suspended') ac.resume(); }catch(e){}
+    if(kind === 'ui'){ try{ uiTick(); }catch(e){} return; }
     sfxLoad();
     var b = sfx.buf[kind === 'rel' ? 'rel' : 'key'];
     if(!b){ btnClickSynth(); return; }
@@ -2392,7 +2414,7 @@
     el.className = 'hhot ' + kind; el.id = id; el.setAttribute('aria-label', label); el.title = label;
     el.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px';
     if(kind === 'rect hnav') el.textContent = label;
-    var ck = /hkey/.test(kind) ? 'key' : /htog/.test(kind) ? 'tog' : /hnav/.test(kind) ? 'nav' : 'btn';
+    var ck = /hkey/.test(kind) ? 'key' : /htog/.test(kind) ? 'tog' : /hnav/.test(kind) ? 'ui' : 'btn';
     el.addEventListener('click', function(e){ playClick(ck); if(fn) fn(e); });
     scene.appendChild(el); hHot[id] = el; return el;
   }
@@ -2543,7 +2565,22 @@
     requestAnimationFrame(startViz);
     paintMini(); mobSync();
   }
+  function openDevice(v){              // celular: entra direto no Rádio ou no Tape Deck, sem escolher disco
+    if(opened) return;
+    if(bgActive){ restoreDetail(); setSource(v === 'radio' ? 'radio' : 'tape'); mobSync(); return; }
+    ensureAudio();
+    powered = true; scene.classList.remove('off'); lcdSig = ''; lcdLast = -2;
+    opened = true; modal = 'detail'; lastFocus = document.activeElement; hideHint(); startDeck();
+    setSource(v === 'radio' ? 'radio' : 'tape');
+    mobSync();
+    detail.hidden = false;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ detail.classList.add('open'); }); });
+    requestAnimationFrame(startViz);
+  }
+  $('qRadio').addEventListener('click', function(){ playClick('ui'); openDevice('radio'); });
+  $('qTape').addEventListener('click', function(){ playClick('ui'); openDevice('tape'); });
   $('miniPlay').addEventListener('click', mainPlay);
+  $('mini').addEventListener('click', function(e){ if(e.target.closest && e.target.closest('button')) playClick('ui'); });
   $('miniNext').addEventListener('click', mainNext);
   $('miniOpen').addEventListener('click', restoreDetail);
   $('miniStop').addEventListener('click', closeDetail);
@@ -2602,6 +2639,7 @@
     mIcon('mRPrev', 'prev'); mIcon('mRNext', 'next');
     [['mtRew', 'rew'], ['mtPlay', 'play'], ['mtFf', 'ff'], ['mtRec', 'rec'], ['mtStop', 'stop'], ['mtPause', 'pause']].forEach(function(k){ $(k[0]).querySelector('.ic').innerHTML = IC[k[1]]; });
     [['mtDisc', 'disc'], ['mtTape', 'tape'], ['mtRadio', 'radio']].forEach(function(k){ $(k[0]).querySelector('.ti').innerHTML = IC[k[1]]; });
+    $('qRadio').querySelector('.qi').innerHTML = IC.radio; $('qTape').querySelector('.qi').innerHTML = IC.tape;
   }
   mInit();
 
@@ -2632,6 +2670,7 @@
   }
   function mobShow(v){                       // trocar de aba só muda a tela; a música não é interrompida
     if(v === mview) return;
+    if(v === 'disc' && !pa){ minimizeDetail(); toast('Escolha um disco na loja.'); return; }     // ainda não escolheu disco: vai para a loja
     mview = v; mApplyView();
     if(v === 'radio' && !radio.loaded) radioLoad();     // carrega a lista de estações (sem tocar)
     lcdSig = ''; hifiRefresh();
@@ -2695,18 +2734,19 @@
   }
 
   /* ----- botões ----- */
-  function mTap(id, fn){ $(id).addEventListener('click', function(e){ playClick(/^mt(Rew|Play|Ff|Rec|Stop|Pause)$/.test(id) ? 'key' : 'btn'); fn(e); mobRefresh(); }); }
+  var MK_EQUIP = /^(mtRew|mtPlay|mtFf|mtRec|mtStop|mtPause)$/, MB_EQUIP = /^(mPlay|mPrev|mNext|mAlbPrev|mAlbNext|mRPrev|mRNext|mRPlay)$/;
+  function mTap(id, fn){ $(id).addEventListener('click', function(e){ playClick(MK_EQUIP.test(id) ? 'key' : MB_EQUIP.test(id) ? 'btn' : 'ui'); fn(e); mobRefresh(); }); }
   mTap('mBack', function(){ minimizeDetail(); });
   mTap('mMenu', function(){ mSheetOpen(); });
   mTap('mOn', function(){ setPower(true); });
-  $('mTabs').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mtab') : null; if(b){ playClick('tog'); mobShow(b.getAttribute('data-v')); } });
+  $('mTabs').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mtab') : null; if(b){ playClick('ui'); mobShow(b.getAttribute('data-v')); } });
   // disco
   mTap('mPlay', function(){ if(!powered) return; if(mode !== 'lp' && setSource('lp') === false) return; mainPlay(); });
   mTap('mPrev', function(){ if(mode === 'lp') mainPrev(); });
   mTap('mNext', function(){ if(mode === 'lp') mainNext(); });
   mTap('mAlbPrev', function(){ albumStep(-1); });
   mTap('mAlbNext', function(){ albumStep(1); });
-  $('mTracks').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('btn'); if(mode !== 'lp') setSource('lp'); playTrack(+b.getAttribute('data-i')); mobRefresh(); } });
+  $('mTracks').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('ui'); if(mode !== 'lp') setSource('lp'); playTrack(+b.getAttribute('data-i')); mobRefresh(); } });
   var mSeekEl = $('mSeek');
   mSeekEl.addEventListener('input', function(){ mseeking = true; var f = mSeekEl.value / 1000; mSeekEl.style.setProperty('--p', (f * 100).toFixed(1) + '%'); mTxt('mCur', fmt(f * lpDur)); });
   mSeekEl.addEventListener('change', function(){
@@ -2724,12 +2764,12 @@
   mTap('mtPause', function(){ deckPauseKey(); });
   mTap('mtErase', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
   $('mtLvl').addEventListener('input', function(e){ setRecLevel(+e.target.value); mc.lvl = recLevel; e.target.style.setProperty('--p', recLevel + '%'); });
-  $('mTapeList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('btn'); tapeJump(+b.getAttribute('data-i')); mobRefresh(); } });
+  $('mTapeList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('ui'); tapeJump(+b.getAttribute('data-i')); mobRefresh(); } });
   // rádio
   mTap('mRPrev', function(){ if(!powered) return; if(mode !== 'radio') setSource('radio'); else radioStep(-1); });
   mTap('mRNext', function(){ if(!powered) return; if(mode !== 'radio') setSource('radio'); else radioStep(1); });
   mTap('mRPlay', function(){ if(!powered) return; if(mode !== 'radio') setSource('radio'); else radioToggle(); });
-  $('mRList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b && powered){ playClick('btn'); var ri = +b.getAttribute('data-i'); radio.idx = ri; if(mode !== 'radio') setSource('radio'); else radioTune(ri); mobRefresh(); } });
+  $('mRList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b && powered){ playClick('ui'); var ri = +b.getAttribute('data-i'); radio.idx = ri; if(mode !== 'radio') setSource('radio'); else radioTune(ri); mobRefresh(); } });
   // volume
   $('mVolR').addEventListener('input', function(e){ setVol(+e.target.value); mc.vol = -1; });
   // menu (☰)
@@ -2739,16 +2779,18 @@
     $('msSync').hidden = !!vReal.hidden; $('msSync').textContent = an ? 'Parar a sincronização dos VUs' : 'Sincronizar VUs e válvulas com o som';
     var fsOn = !!(document.fullscreenElement || document.webkitFullscreenElement), fsApi = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
     $('msFull').hidden = !fsApi || (!fsOn && window.navigator.standalone === true); $('msFull').textContent = fsOn ? 'Sair da tela cheia' : 'Tela cheia';
+    $('msSound').textContent = 'Som de cliques e folhear: ' + (soundOn ? 'ligado' : 'desligado');
     $('mSheet').hidden = false;
   }
   function mSheetClose(){ $('mSheet').hidden = true; }
   $('mSheet').addEventListener('click', function(e){ if(e.target === $('mSheet')) mSheetClose(); });
-  function mItem(id, fn){ $(id).addEventListener('click', function(){ playClick('btn'); mSheetClose(); fn(); mobRefresh(); }); }
+  function mItem(id, fn){ $(id).addEventListener('click', function(){ playClick('ui'); mSheetClose(); fn(); mobRefresh(); }); }
   mItem('msShop', function(){ goShop(); });
   mItem('msSync', function(){ if(an){ stopReal(); note('Sincronização desligada: VUs no efeito visual.'); } else { note('Escolha esta aba e marque "Compartilhar áudio da guia".'); startReal(); } });
   mItem('msFilter', function(){ filterOn = !filterOn; });
   mItem('msPower', function(){ setPower(!powered); });
   mItem('msFull', function(){ toggleFullscreen(); });
+  mItem('msSound', function(){ $('sound').click(); });
   mItem('msExit', function(){ exitApp(); });
   mItem('msStop', function(){ closeDetail(); });
   $('msCancel').addEventListener('click', mSheetClose);
@@ -2763,7 +2805,7 @@
     vlvl += ((playing ? 1 : 0) - vlvl) * Math.min(1, dt*5);
     var w = viz.clientWidth, h = viz.clientHeight, a = PA();
     if(a){
-      var bpm = 84 + hash(a.tracks[curTrack].id) % 60;
+      var tk0 = a.tracks[curTrack], bpm = 84 + hash(tk0 ? tk0.id : 'x') % 60;      // sem disco escolhido não há faixa
       var beat = Math.pow(Math.sin(vt*Math.PI*bpm/60)*0.5 + 0.5, 2.5);
       var bw = w/NB, g = null;
       if(w){
@@ -3203,7 +3245,7 @@
     $('cDel').hidden = !(isAdmin && NCOUNT > 1 && curCounter === NCOUNT - 1 && counterEmpty(curCounter));
   }
   /* clique mecânico dos botões */
-  function btnClick(){ playClick('btn'); }
+  function btnClick(){ playClick('ui'); }
   function btnClickSynth(){   // reserva, enquanto o MP3 ainda está carregando
     if(!soundOn || !ac || ac.state !== 'running') return;
     try{
@@ -3264,23 +3306,15 @@
   function goFullscreen(){
     var el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen;
     try{ if(f){ var p = f.call(el, {navigationUI: 'hide'}); if(p && p.catch) p.catch(function(){}); } }catch(e){}
-    try{        // na vertical o app fica travado em pé; na horizontal deixa girar livremente
-      if(window.screen && screen.orientation){
-        if(isPortrait() && screen.orientation.lock){ var q = screen.orientation.lock('portrait'); if(q && q.catch) q.catch(function(){}); }
-        else if(screen.orientation.unlock) screen.orientation.unlock();
-      }
-    }catch(e){}
+    try{ if(window.screen && screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}    // sem travar a orientação: dá para girar o celular em tela cheia
   }
   (function(){
     if(!splash) return;
     var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     if(isPortrait() && coarse && !inFullscreen()){
       splash.hidden = false;
-      var ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      var can = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
-      if(ios && !can) $('splHint').textContent = 'No iPhone: toque em Compartilhar › "Adicionar à Tela de Início" para abrir em tela cheia, sem as barras do navegador.';
     }
-    $('splGo').addEventListener('click', function(){ ensureAudio(); playClick('btn'); goFullscreen(); splash.hidden = true; });
+    $('splGo').addEventListener('click', function(){ ensureAudio(); goFullscreen(); splash.hidden = true; });
   })();
 
   /* ---------- sair: tela cheia, encerrar o sistema ---------- */
@@ -3304,7 +3338,7 @@
     try{ window.close(); }catch(e){}        // só funciona se a aba foi aberta por script; senão, a tela de "encerrado" fica
   }
   $('exitBtn').innerHTML = IC.power;
-  $('exitBtn').addEventListener('click', function(){ playClick('btn'); exitApp(); });
+  $('exitBtn').addEventListener('click', function(){ exitApp(); });
   $('byeGo').addEventListener('click', function(){ $('bye').hidden = true; showShop(); });
 
   /* ---------- segundo plano: o YouTube pausa o player quando o app sai da tela; ao voltar a música retoma ---------- */
@@ -3373,7 +3407,13 @@
     }
     ['fullscreenchange', 'webkitfullscreenchange'].forEach(function(ev){ document.addEventListener(ev, paint); });
     paint();
-    b.addEventListener('click', function(){ ensureAudio(); playClick('btn'); toggleFullscreen(); });
+    b.addEventListener('click', function(){ ensureAudio(); playClick('ui'); toggleFullscreen(); });
+  })();
+
+  /* clique normal de menu em todos os botões da barra do topo (Loja, Admin, som, MIDI, sair...) */
+  (function(){
+    var top = document.querySelector('.top'); if(!top) return;
+    top.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('button')) playClick('ui'); });
   })();
 
   /* =====================================================================
@@ -3541,7 +3581,7 @@
       else midiSwitch(id, !filterOn);
       return;
     }
-    if(c.type === 'fn'){ playClick('btn'); midiNav(p.nav[id]); return; }
+    if(c.type === 'fn'){ playClick('ui'); midiNav(p.nav[id]); return; }
     if(!midiNeedDisc()) return;
     playClick('key');
     switch(id){
@@ -3631,7 +3671,7 @@
   }
   function midiClose(){ if(midi.learn){ midi.learn = null; clearTimeout(midi.learnT); } $('midiPanel').hidden = true; }
   $('midiBtn').innerHTML = IC.midi;
-  $('midiBtn').addEventListener('click', function(){ playClick('btn'); midiOpen(); });
+  $('midiBtn').addEventListener('click', function(){ midiOpen(); });
   $('mdClose').addEventListener('click', midiClose);
   $('midiPanel').addEventListener('click', function(e){ if(e.target === $('midiPanel')) midiClose(); });
   $('mdAct').addEventListener('click', function(){ midiStart(); });
@@ -3694,6 +3734,8 @@
 
   /* ---------- abertura em vídeo ---------- */
   var intro = $('intro'), iv = $('introVideo');
+  var skipIntro = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || isPortrait();   // no celular não há vídeo de abertura
+  if(skipIntro && intro){ intro.style.display = 'none'; }
   function endIntro(){
     if(!intro) return;
     var el = intro; intro = null;
@@ -3705,7 +3747,8 @@
   iv.addEventListener('ended', endIntro);
   iv.addEventListener('error', endIntro);
   setTimeout(endIntro, 9000);
-  (function(){
+  if(skipIntro) endIntro();
+  else (function(){
     iv.muted = false;
     var p = iv.play();
     if(p && p.catch) p.catch(function(){ iv.muted = true; var q = iv.play(); if(q && q.catch) q.catch(endIntro); });
