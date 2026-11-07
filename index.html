@@ -122,6 +122,8 @@
   .info .meta{margin:5px 0 14px;color:rgba(238,243,241,.72);font-size:15px}
   /* o player do YouTube fica fora da tela: só o áudio é usado */
   .yt-hidden{position:fixed;left:-9999px;top:0;width:256px;height:256px;overflow:hidden;pointer-events:none}
+  /* durante um comercial o player aparece, para dar para tocar em "Pular anúncio" */
+  .yt-hidden.ad-show{left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;pointer-events:auto;border-radius:12px;box-shadow:0 0 0 2px rgba(255,255,255,.6),0 12px 40px rgba(0,0,0,.7)}
 
   .tracks{list-style:none;margin:0 0 12px;padding:4px;max-height:24vh;overflow:auto;border-radius:10px;background:rgba(255,255,255,.07);overscroll-behavior:contain}
   .trk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:transparent;color:#eef3f1;padding:10px 10px;border-radius:8px;font-size:15px;line-height:1.25}
@@ -1350,7 +1352,7 @@
       width:'256', height:'256', videoId:id, playerVars:pv,
       events:{
         onReady:function(e){
-          playerReady = true; applyVolume();
+          playerReady = true; adHook(); applyVolume();
           if(pendingId){ e.target.loadVideoById(pendingId); pendingId = null; }
           else { try{ e.target.playVideo(); }catch(_){} }
         },
@@ -1376,6 +1378,7 @@
     }
   }
   function onErr(e){
+    adErrAt = performance.now();
     var c = e && e.data, why = {
       2:'link de vídeo inválido',
       5:'erro do player',
@@ -1398,7 +1401,7 @@
   function startProgress(){
     if(progTimer) return;
     progTimer = setInterval(function(){
-      if(!player || !playerReady || !player.getDuration || mode !== 'lp') return;
+      if(!player || !playerReady || !player.getDuration || mode !== 'lp' || adActive) return;
       var d = player.getDuration() || 0, c = player.getCurrentTime() || 0;
       if(!seeking){ dSeek.max = Math.max(1, Math.floor(d)); dSeek.value = Math.floor(c); }
       dCur.textContent = fmt(seeking ? dSeek.value : c); dDur.textContent = fmt(d); hifiTime(c, d);
@@ -1495,6 +1498,8 @@
 
   /* ---------- volume (controla o player do YouTube de verdade) ---------- */
   var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
+  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0;   // comercial do YouTube (ver adWatch)
+  var AD_SHOW_PLAYER = true;   // true: mostra o player durante o comercial para você poder tocar em "Pular anúncio"
   try{ var sv = localStorage.getItem('gaveta:vol'); if(sv !== null && !isNaN(+sv)) volume = clamp(+sv, 0, 100); }catch(e){}
   function paintVolume(){
     vol.value = volume; volOut.textContent = (muted ? 0 : volume) + '%';
@@ -1505,7 +1510,8 @@
   function applyVolume(){
     paintVolume();
     if(!player || !playerReady) return;
-    try{ player.setVolume(volume); if(muted || volume === 0) player.mute(); else player.unMute(); }catch(e){}
+    // adActive: silencia só durante o comercial; o volume escolhido pelo usuário não é alterado
+    try{ player.setVolume(volume); if(muted || volume === 0 || adActive) player.mute(); else player.unMute(); }catch(e){}
   }
   vol.addEventListener('input', function(){
     volume = +vol.value; if(volume > 0) muted = false;
@@ -1736,7 +1742,8 @@
      ===================================================================== */
   var TAPE_CAP = 45*60;          // um lado de uma fita C-90
   var tape = {segs: [], pos: 0}; // segs: {vid, title, artist, album, start, dur}
-  var mode = 'lp';               // fonte ativa: 'lp' (disco) ou 'tape' (fita)
+  var mode = 'lp';               // fonte ativa: 'lp' (disco), 'tape' (fita) ou 'radio'
+  var srcSel = 'lp';             // posição da chave SOURCE (disco/fita). O rádio NÃO mexe nela
   var deck = 'stop';             // 'stop' | 'play' | 'rec' | 'ff' | 'rew'
   var rec = {on: false, seg: null};
   var powered = true, filterOn = false, recLevel = 50, shuttle = 0, tapeIdx = -1, lpResume = null, ytPlay = false, lastAdv = 0;
@@ -1815,6 +1822,8 @@
     if(src === mode) return true;
     if(rec.on && src !== 'lp'){ note(mode === 'lp' ? 'Pare a gravação antes de trocar de fonte.' : 'Pare a gravação antes de ouvir a fita.'); return false; }
     var from = mode;
+    if(src === 'radio' && from !== 'radio') srcSel = from;     // guarda onde a chave SOURCE estava
+    if(src === 'lp' || src === 'tape') srcSel = src;
     if(from === 'radio') radioStopAudio();
     if(from === 'lp' && src !== 'lp'){
       var a = PA(), t = a && a.tracks[curTrack];
@@ -2114,7 +2123,7 @@
       if(tape.pos <= 0){ tape.pos = 0; deckStop(); note('Início da fita.'); }
       else if(tape.pos >= L){ tape.pos = L; deckStop(); note('Fim da gravação.'); }
     } else if(rec.on){
-      if(ytPlay && mode === 'lp' && powered){
+      if(ytPlay && !adActive && mode === 'lp' && powered){
         var a = PA(), t = a && a.tracks[curTrack];
         if(t){
           var g = rec.seg;
@@ -2125,13 +2134,14 @@
           if(tape.pos >= TAPE_CAP) recStop('Fita cheia (' + fmt(TAPE_CAP) + ').');
         }
       }
-    } else if(deck === 'play' && mode === 'tape' && ytPlay){
+    } else if(deck === 'play' && mode === 'tape' && ytPlay && !adActive){
       var g2 = tape.segs[tapeIdx];
       if(g2){
         tape.pos = segOffset(tapeIdx) + clamp(cur - g2.start, 0, g2.dur);
         if(cur >= g2.start + g2.dur - 0.2 && Date.now() - lastAdv > 900) tapeAdvance();
       }
     }
+    adWatch();
     syncCrackle(); whirSync();
     hifiRefresh();
   }
@@ -2142,6 +2152,66 @@
     deck = 'stop'; shuttle = 0; mode = 'lp'; ytPlay = false; lpResume = null;
     crackleOff(); whirStop(true); radioStopAudio();
     hifiRefresh();
+  }
+
+  /* ----- comercial do YouTube -----
+     O YouTube não avisa quando entra um anúncio. Dois sinais:
+       1) o player passa a informar um vídeo que não é o da faixa/trecho esperado;
+       2) o player sai do estado "tocando" sem que o app tenha pausado/parado (é o que faz o disco parar de girar).
+     Durante o comercial: som silenciado (o volume escolhido não muda) e o player aparece para dar para tocar em "Pular".
+     Quando o vídeo certo volta a tocar, o volume é restaurado e o player some de novo.
+     Se não detectar no seu navegador, rode adProbe() no console DURANTE um comercial. */
+  function adHook(){                       // registra o que o PRÓPRIO app pede ao player
+    if(!player || player._adHooked) return; player._adHooked = true;
+    [['pauseVideo', true], ['stopVideo', true], ['cueVideoById', true], ['playVideo', false], ['loadVideoById', false]].forEach(function(x){
+      var f = player[x[0]]; if(typeof f !== 'function') return;
+      player[x[0]] = function(){ userPaused = x[1]; return f.apply(player, arguments); };
+    });
+  }
+  function adExpectedId(){
+    try{
+      if(mode === 'lp'){ var a = PA(), t = a && a.tracks[curTrack]; return t ? t.id : ''; }
+      if(mode === 'tape'){ var g = tape.segs[tapeIdx]; return g ? g.vid : ''; }
+    }catch(e){}
+    return '';
+  }
+  function adSignals(){
+    var o = {id: '', url: '', state: null, adState: null, dur: null, cur: null};
+    try{ var vd = player.getVideoData && player.getVideoData(); o.id = (vd && vd.video_id) || ''; }catch(e){}
+    try{ var m = /[?&]v=([\w-]{11})/.exec((player.getVideoUrl && player.getVideoUrl()) || ''); o.url = m ? m[1] : ''; }catch(e){}
+    try{ o.state = player.getPlayerState(); }catch(e){}
+    try{ if(player.getAdState) o.adState = player.getAdState(); }catch(e){}
+    try{ o.dur = player.getDuration(); o.cur = player.getCurrentTime(); }catch(e){}
+    return o;
+  }
+  window.adProbe = function(){ var o = adSignals(); o.esperado = adExpectedId(); o.modo = mode; o.adActive = adActive; o.userPaused = userPaused; try{ console.log('[adProbe]', JSON.stringify(o)); }catch(e){} return o; };
+  function adSet(on, sig){
+    adActive = on; adHits = 0; adClear = 0; if(!on) adStall = 0;   // ligado: mantém o contador de "parado", senão acharia que o comercial acabou
+    try{ console.info('[comercial]', on ? 'detectado' : 'terminou', sig ? JSON.stringify(sig) : ''); }catch(e){}
+    applyVolume();                                    // silencia / devolve o volume que estava
+    if(AD_SHOW_PLAYER){
+      var box = document.querySelector('.yt-hidden');
+      if(box){ box.classList.toggle('ad-show', on); box.setAttribute('aria-hidden', on ? 'false' : 'true'); }
+    }
+    note(on ? 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio.' : '') : 'Fim do comercial. Som de volta.');
+  }
+  function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
+    var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
+    if(!ok){ if(adActive) adSet(false); adHits = adClear = adStall = 0; return; }
+    var exp = adExpectedId(); if(!exp) return;
+    var now = performance.now(), s = adSignals(); adRecent[exp] = now;
+    // id "de fora" = não é o esperado nem um que acabou de ser o esperado (troca de faixa ainda carregando)
+    function foreign(r){ return !!r && r !== exp && !(adRecent[r] && now - adRecent[r] < 4000); }
+    var idAd = foreign(s.id) || foreign(s.url);
+    // parado sem o app ter pausado: não conta se acabou a faixa (0), se a aba está oculta ou se houve erro há pouco
+    var stopped = !userPaused && s.state !== 1 && s.state !== 0 && !document.hidden && now - adErrAt > 6000;
+    adStall = stopped ? adStall + 1 : 0;
+    var isAd = idAd || adStall >= 20;                 // 20 ticks = 2 s parado
+    if(isAd){ adHits++; adClear = 0; } else { adClear++; adHits = 0; }
+    if(!adActive && adHits >= (idAd ? 3 : 1)) adSet(true, s);
+    else if(adActive && adClear >= 3) adSet(false, s);
+    // depois do comercial o vídeo certo pode ficar parado: manda tocar
+    if(adActive && !idAd && s.state !== 1 && !document.hidden && now - adResumeAt > 2500){ adResumeAt = now; try{ player.playVideo(); }catch(e){} }
   }
 
   /* ----- ruído analógico: estalos de disco (LP) ou chiado de fita (cassete), gerados aqui (o áudio do YouTube não é alterado).
@@ -2164,7 +2234,7 @@
     crk = {src: src, g: g, kind: kind};
   }
   function syncCrackle(){
-    var want = !filterOn && powered && ytPlay && !muted;
+    var want = !filterOn && powered && ytPlay && !muted && !adActive;
     if(!want){ if(crk) crk.g.gain.value = 0; return; }
     if(!crk || crk.kind !== mode) buildCrackle(mode);
     if(crk) crk.g.gain.value = 0.2 * volume / 100;
@@ -2479,7 +2549,11 @@
     return el;
   }
   tog('hPower', 'Liga/desliga o amplificador', 1496, function(){ setPower(!powered); });
-  tog('hSource', 'Fonte: disco (alavanca para cima) ou fita (para baixo)', 1549, function(){ if(powered) setSource(mode === 'lp' ? 'tape' : 'lp'); });
+  tog('hSource', 'Fonte: disco (alavanca para cima) ou fita (para baixo)', 1549, function(){
+    if(!powered) return;
+    if(mode === 'radio'){ srcSel = srcSel === 'lp' ? 'tape' : 'lp'; lcdSig = ''; hifiRefresh(); }   // rádio ligado: só troca a posição da chave; vale quando o rádio desligar
+    else setSource(mode === 'lp' ? 'tape' : 'lp');
+  });
   tog('hFilter', 'Filtro (ligado = sem ruído; desligado = ruído de vinil / fita)', 1603, function(){ filterOn = !filterOn; });
   [['hLedP', 1512.5, '#ffe14a', 'rgba(255,225,60,.7)'], ['hLedS', 1566, '#3dffa0', 'rgba(60,255,160,.65)'], ['hLedF', 1619.5, '#ff4a3a', 'rgba(255,70,50,.7)']].forEach(function(l){
     var el = document.createElement('i'); el.className = 'hled'; el.id = l[0];
@@ -2488,11 +2562,12 @@
   });
   function paintToggles(){
     hHot.hPower.classList.toggle('up', powered);
-    hHot.hSource.classList.toggle('up', mode === 'lp');
+    if(mode !== 'radio') srcSel = mode;
+    hHot.hSource.classList.toggle('up', srcSel === 'lp');
     hHot.hRadio.classList.toggle('up', mode === 'radio');
     hHot.hFilter.classList.toggle('up', filterOn);
     hHot.hLedP.classList.toggle('on', powered);
-    var lc = mode === 'tape' ? ['#ff4a3a', 'rgba(255,70,50,.7)'] : mode === 'radio' ? ['#ffb02e', 'rgba(255,170,40,.7)'] : ['#3dffa0', 'rgba(60,255,160,.65)'];   // verde = disco, vermelho = fita, âmbar = rádio
+    var lc = srcSel === 'tape' ? ['#ff4a3a', 'rgba(255,70,50,.7)'] : ['#3dffa0', 'rgba(60,255,160,.65)'];   // LED da chave SOURCE: verde = disco, vermelho = fita (não depende do rádio)
     hHot.hLedS.style.setProperty('--c', lc[0]);
     hHot.hLedS.style.setProperty('--g', lc[1]);
     hHot.hLedS.classList.toggle('on', powered);
@@ -2501,7 +2576,7 @@
 
   /* alavanca RADIO-TAPE (ao lado do REC LEVEL): para cima liga o rádio */
   (function(){
-    var el = hot('hRadio', 'Rádio do RS (alavanca para cima) / disco e fita (para baixo)', 1319, 684, 20, 46, 'rect htog', function(){ if(powered) setSource(mode === 'radio' ? 'lp' : 'radio'); });
+    var el = hot('hRadio', 'Rádio do RS (alavanca para cima) / disco e fita (para baixo)', 1319, 684, 20, 46, 'rect htog', function(){ if(powered) setSource(mode === 'radio' ? srcSel : 'radio'); });
     el.innerHTML = '<span class="tg crop" style="background-position:-1319px -684px"></span>';
   })();
 
@@ -2694,7 +2769,7 @@
   $('fRew').addEventListener('click', function(){ deckShuttle(-1); });
   $('fFf').addEventListener('click', function(){ deckShuttle(1); });
   $('fErase').addEventListener('click', tapeErase);
-  $('rOn').addEventListener('click', function(){ if(powered) setSource(mode === 'radio' ? 'lp' : 'radio'); });
+  $('rOn').addEventListener('click', function(){ if(powered) setSource(mode === 'radio' ? srcSel : 'radio'); });
   $('rPrev').addEventListener('click', function(){ if(mode === 'radio') radioStep(-1); });
   $('rNext').addEventListener('click', function(){ if(mode === 'radio') radioStep(1); });
 
@@ -3675,7 +3750,7 @@
   function midiSwitch(id, pos){
     if(!midiNeedDisc()) return;
     if(id === 'swPower') setPower(pos);
-    else if(id === 'swSource'){ if(powered){ var tg = pos ? 'lp' : 'tape'; if(mode !== tg) setSource(tg); } }
+    else if(id === 'swSource'){ if(powered){ var tg = pos ? 'lp' : 'tape'; if(mode === 'radio'){ srcSel = tg; lcdSig = ''; hifiRefresh(); } else if(mode !== tg) setSource(tg); } }
     else if(id === 'swFilter') filterOn = pos;
     playClick('tog');
   }
@@ -3683,7 +3758,7 @@
     var c = MCT[id], p = mProf();
     if(c.type === 'sw'){ // alavanca em modo "alternar"
       if(id === 'swPower') midiSwitch(id, !powered);
-      else if(id === 'swSource') midiSwitch(id, mode !== 'lp');
+      else if(id === 'swSource') midiSwitch(id, (mode === 'radio' ? srcSel : mode) !== 'lp');
       else midiSwitch(id, !filterOn);
       return;
     }
@@ -3701,7 +3776,7 @@
       case 'xPlay': rndPlay(); break;
       case 'xNext': rndNext(); break;
       case 'xStop': rndStop(); break;
-      case 'rRadio': if(powered) setSource(mode === 'radio' ? 'lp' : 'radio'); break;
+      case 'rRadio': if(powered) setSource(mode === 'radio' ? srcSel : 'radio'); break;
     }
   }
   function midiNav(act){
