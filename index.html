@@ -350,7 +350,9 @@
 
   /* LEDs vermelhos do volume: acendem em sequência do início até o ponto do botão */
   .vled{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,#2e1e18 0 55%,#1d1611 100%);transition:background .14s,box-shadow .14s}
-  .vled.on{background:radial-gradient(circle,#ffd6c6 0 14%,#ff3a1e 42%,#c01508 72%,rgba(190,20,10,0) 100%);box-shadow:0 0 7px 2px rgba(255,50,30,.75)}
+  .vled.on{background:radial-gradient(circle,#ffd6c6 0 14%,#ff3a1e 42%,#c01508 72%,rgba(190,20,10,0) 100%);box-shadow:0 0 7px 2px rgba(255,50,30,.75)}   /* vermelho: os últimos */
+  .vled.on.g{background:radial-gradient(circle,#d9ffe8 0 14%,#27f27e 42%,#0e9f48 72%,rgba(10,150,65,0) 100%);box-shadow:0 0 7px 2px rgba(40,240,125,.7)}    /* verdes: os primeiros */
+  .vled.on.y{background:radial-gradient(circle,#fff7cc 0 14%,#ffd21f 42%,#d29a00 72%,rgba(205,145,0,0) 100%);box-shadow:0 0 7px 2px rgba(255,205,40,.72)}   /* amarelos: os do meio */
 
   /* sistema desligado: apaga todas as luzes que estão na foto */
   .hdim{background-image:var(--bg);background-repeat:no-repeat;background-size:1725px 894px;opacity:0;transition:opacity .5s;pointer-events:none;filter:grayscale(.85) brightness(.5);
@@ -545,9 +547,14 @@
   .hrneedle{position:absolute;left:876px;top:430px;width:58px;height:4px;border-radius:2px;pointer-events:none;opacity:0;transition:opacity .4s;
     background:linear-gradient(90deg,rgba(255,110,30,0),#ff8a30 14%,#ffc27a 50%,#ff8a30 86%,rgba(255,110,30,0));box-shadow:0 0 7px 2px rgba(255,120,30,.65),0 0 18px 5px rgba(255,90,10,.25)}
   .scene.radon .hrneedle{opacity:1}
-  .hrdial{position:absolute;left:861px;top:620px;width:68px;height:68px;border-radius:50%;background:var(--rad) -133px -382px/244px 534px no-repeat;pointer-events:none;opacity:0;touch-action:none;cursor:grab;outline:none;will-change:transform}
+  .hrdial{position:absolute;left:861px;top:620px;width:68px;height:68px;border-radius:50%;pointer-events:none;opacity:0;touch-action:none;cursor:grab;outline:none}
   .scene.radmode .hrdial{opacity:1;pointer-events:auto}
   .hrdial:active{cursor:grabbing}
+  /* igual ao botão de volume: a face (com o reflexo da luz) fica parada e só o ponteiro vermelho gira */
+  .scene{--rface:url("data:image/jpeg;base64,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")}
+  .hrdial .rface{position:absolute;inset:0;border-radius:50%;background:var(--rface) 0 0/100% 100% no-repeat}
+  .hrdial .rptr{position:absolute;inset:0;will-change:transform}
+  .hrdial .rptr i{position:absolute;border-radius:2px;background:linear-gradient(90deg,#ff6e4e,#e02510 55%,#a50f05);box-shadow:0 0 3px rgba(255,40,20,.55),0 1px 2px rgba(0,0,0,.55)}
   .hrdial:focus-visible{box-shadow:0 0 0 3px #ffd58a}
   .hrscale{position:absolute;left:858px;top:341px;width:96px;height:216px;pointer-events:none;touch-action:none;cursor:pointer}
   .scene.radmode .hrscale{pointer-events:auto}
@@ -768,7 +775,7 @@
         <div class="hrad"></div>
         <div class="hrneedle" id="hRneedle"></div>
         <div class="hrscale" id="hRscale" title="Clique na escala para sintonizar"></div>
-        <div class="hrdial" id="hRdial" role="slider" tabindex="0" aria-label="Sintonia do rádio" title="Dial de sintonia: arraste, role ou use as setas"></div>
+        <div class="hrdial" id="hRdial" role="slider" tabindex="0" aria-label="Sintonia do rádio" title="Dial de sintonia: arraste, role ou use as setas"><div class="rface"></div><div class="rptr" id="hRptr"><i style="left:32.3px;top:5.5px;width:3.4px;height:11px"></i></div></div>
         <div class="htoff"></div>
         <div class="htube" style="left:1419px"></div><div class="htube" style="left:1482px"></div><div class="htube" style="left:1544px"></div><div class="htube" style="left:1607px"></div>
         <div class="hvu" id="hvL" style="left:1057px;top:76px;width:142px;height:76px"></div>
@@ -2435,7 +2442,7 @@
     var cx = 1112.6, cy = 319.5, R = 54.3;
     for(var i = 0; i <= 20; i += 2){
       var a = (-150 + 15*i) * Math.PI/180, el = document.createElement('i');
-      el.className = 'vled'; el.style.left = (cx + R*Math.sin(a)).toFixed(1) + 'px'; el.style.top = (cy - R*Math.cos(a)).toFixed(1) + 'px';
+      el.className = 'vled ' + (i <= 10 ? 'g' : i <= 16 ? 'y' : 'r'); el.style.left = (cx + R*Math.sin(a)).toFixed(1) + 'px'; el.style.top = (cy - R*Math.cos(a)).toFixed(1) + 'px';
       scene.appendChild(el); vleds.push(el);
     }
   })();
@@ -2628,7 +2635,7 @@
     if(!rm) return;
     var f = rdial.show !== null ? rdial.show : radFrac();
     hRneedle.style.top = (554.8 - f * 215.5).toFixed(1) + 'px';
-    hRdial.style.transform = 'rotate(' + (-140 + f * 280).toFixed(1) + 'deg)';
+    $('hRptr').style.transform = 'rotate(' + (-140 + f * 280).toFixed(1) + 'deg)';   // só o ponteiro gira; a face e o reflexo ficam parados
     hRdial.setAttribute('aria-valuenow', String(radio.idx + 1));
   }
   function radSelect(i){                      // escolhe a estação já no visor/ponteiro e sintoniza após uma pausa curta
