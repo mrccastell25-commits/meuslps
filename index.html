@@ -432,7 +432,7 @@
   .msc[hidden],.mnote[hidden],.moff[hidden]{display:none!important}
   .mcard{border:1px solid rgba(184,146,79,.42);border-radius:14px;background:linear-gradient(#2a1c10,#170f08);box-shadow:inset 0 1px 0 rgba(255,225,170,.12),0 6px 16px rgba(0,0,0,.45);padding:12px}
   .mnow{display:flex;gap:12px;align-items:center}
-  .mcov{position:relative;width:76px;height:76px;flex:none;border-radius:8px;overflow:hidden;background:#111;box-shadow:0 4px 10px rgba(0,0,0,.6)}
+  .mcov{position:relative;width:76px;height:76px;flex:none;border-radius:8px;overflow:hidden;background:#111;box-shadow:0 4px 10px rgba(0,0,0,.6);cursor:pointer}
   .mcov svg{position:absolute;inset:0;display:block;width:100%;height:100%}
   .mnowt{min-width:0;display:grid;gap:3px}
   .mnowt b{font:700 17px/1.2 'Bricolage Grotesque',system-ui,sans-serif;color:#fff1cf;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1267,12 +1267,12 @@
   function hideHint(){ hint.classList.add('gone'); }
 
   /* ---------- ponteiro ---------- */
-  var pid = null, sx = 0, sy = 0, axis = null, startTarget = 0, samples = [];
+  var pid = null, sx = 0, sy = 0, axis = null, startTarget = 0, samples = [], ptype = 'mouse';
   stage.addEventListener('pointerdown', function(e){
     if(opened || !N || (e.button !== undefined && e.button > 0)) return;
     if(e.target.closest && e.target.closest('button')) return;
     ensureAudio(); hideHint();
-    pid = e.pointerId; sx = e.clientX; sy = e.clientY; axis = null; startTarget = target;
+    pid = e.pointerId; ptype = e.pointerType || 'mouse'; sx = e.clientX; sy = e.clientY; axis = null; startTarget = target;
     samples = [{t: performance.now(), v: target}];
     try{ stage.setPointerCapture(pid); }catch(err){}
   });
@@ -1285,7 +1285,8 @@
       dragging = true; stage.classList.add('dragging');
     }
     var d = axis === 'x' ? dx : dy, unit = Math.max(48, S*0.2);
-    target = clamp(startTarget - d/unit, -0.35, N - 1 + 0.35);
+    var sgn = (axis === 'y' && ptype === 'touch') ? 1 : -1;   // toque: para baixo os discos caem (como puxar com a mão); para cima voltam ao fundo da gaveta
+    target = clamp(startTarget + sgn*d/unit, -0.35, N - 1 + 0.35);
     samples.push({t: performance.now(), v: target});
     if(samples.length > 8) samples.shift();
     kick();
@@ -1466,7 +1467,7 @@
   }
   function trackStep(d){ if(mode === 'tape'){ tapeSkip(d); return; } playTrack(curTrack + d); }
   function showAlbum(i, play, keep){
-    curAlbum = i; if(!keep) curTrack = 0; var a = albums[i]; pa = a; navLock = false; scene.classList.remove('nodisc');
+    curAlbum = i; if(!keep) curTrack = 0; var a = albums[i]; pa = a; navLock = false; scene.classList.remove('nodisc'); if(!keep) mobTop();
     $('dTitle').textContent = a.title;
     $('dMeta').textContent = (a.artist && a.artist !== a.title ? a.artist + '. ' : '') + a.tracks.length + (a.tracks.length === 1 ? ' faixa.' : ' faixas.');
     dCover.innerHTML = coverHTML(a); hifiAlbum(a);
@@ -1483,15 +1484,18 @@
     if(play) playTrack(0);
   }
   function albumStep(d){ if(navLock) return; var n = curAlbum + d; if(n >= 0 && n < N) showAlbum(n, true); }
-  function openDetail(i){
-    var same = bgActive && sameAlbum(albums[i], pa);   // o mesmo disco já está tocando: só volta ao toca-discos
+  function mobTop(){ var mb = $('mbody'); if(mb) mb.scrollTop = 0; }   // celular: a tela do disco sempre começa com a capa e o nome no topo
+  function openDetail(i, rndTrack){
+    var same = !rndTrack && bgActive && sameAlbum(albums[i], pa);   // o mesmo disco já está tocando: só volta ao toca-discos
     bgActive = false; paintMini();
     opened = true; modal = 'detail'; lastFocus = document.activeElement; hideHint();
     powered = true; scene.classList.remove('off'); lcdSig = ''; lcdLast = -2; startDeck();
-    showAlbum(i, !same, same);
+    if(rndTrack){ showAlbum(i, false, false); playTrack(Math.floor(Math.random() * albums[i].tracks.length)); }   // sorteio: também sorteia a faixa
+    else showAlbum(i, !same, same);
     mobSync();
     detail.hidden = false;
-    requestAnimationFrame(function(){ requestAnimationFrame(function(){ detail.classList.add('open'); }); });
+    mobTop();
+    requestAnimationFrame(function(){ mobTop(); requestAnimationFrame(function(){ mobTop(); detail.classList.add('open'); }); });
     requestAnimationFrame(startViz);
     $('dClose').focus({preventScroll:true});
   }
@@ -2629,7 +2633,8 @@
 
   /* ----- rádio na cena (desktop): ponteiro, dial de sintonia e escala ----- */
   var hRneedle = $('hRneedle'), hRdial = $('hRdial'), hRscale = $('hRscale'), rdial = {drag: null, timer: 0, show: null};
-  function radFrac(){ var n = radio.list.length; return n > 1 ? radio.idx / (n - 1) : 0.5; }
+  function radFrac(){ var n = radio.list.length; return n > 1 ? 1 - radio.idx / (n - 1) : 0.5; }   // ponteiro no alto da escala = 1ª estação (topo da lista)
+  function radIdx(f){ var n = radio.list.length; return n > 1 ? (1 - f) * (n - 1) : 0; }
   function radPaint(){
     scene.classList.toggle('nodisc', !pa);              // sem disco escolhido: prato e suporte vazios
     var rm = mode === 'radio' && !isPortrait();
@@ -2662,16 +2667,16 @@
       var d = rdial.drag; if(!d) return;
       var a = ang(e), da = a - d.a; if(da > 180) da -= 360; if(da < -180) da += 360;
       d.a = a; d.f = clamp(d.f + da / 280, 0, 1); rdial.show = d.f;
-      var n = radio.list.length; radSelect(n > 1 ? d.f * (n - 1) : 0); radPaint();
+      radSelect(radIdx(d.f)); radPaint();
     });
     function up(){ rdial.drag = null; rdial.show = null; radPaint(); }
     hRdial.addEventListener('pointerup', up); hRdial.addEventListener('pointercancel', up);
-    hRdial.addEventListener('wheel', function(e){ e.preventDefault(); radSelect(radio.idx + (e.deltaY < 0 ? 1 : -1)); }, {passive: false});
+    hRdial.addEventListener('wheel', function(e){ e.preventDefault(); radSelect(radio.idx + (e.deltaY < 0 ? -1 : 1)); }, {passive: false});
     hRdial.addEventListener('keydown', function(e){
-      var d = (e.key === 'ArrowUp' || e.key === 'ArrowRight') ? 1 : (e.key === 'ArrowDown' || e.key === 'ArrowLeft') ? -1 : 0;
+      var d = (e.key === 'ArrowUp' || e.key === 'ArrowRight') ? -1 : (e.key === 'ArrowDown' || e.key === 'ArrowLeft') ? 1 : 0;
       if(d){ radSelect(radio.idx + d); e.preventDefault(); e.stopPropagation(); }
     });
-    function onScale(e){ var r = hRscale.getBoundingClientRect(), n = radio.list.length; if(!powered) return; var f = clamp(1 - (e.clientY - r.top) / r.height, 0, 1); radSelect(n > 1 ? f * (n - 1) : 0); }
+    function onScale(e){ var r = hRscale.getBoundingClientRect(), n = radio.list.length; if(!powered) return; var f = clamp(1 - (e.clientY - r.top) / r.height, 0, 1); radSelect(radIdx(f)); }
     var sd = false;
     hRscale.addEventListener('pointerdown', function(e){ sd = true; try{ hRscale.setPointerCapture(e.pointerId); }catch(_){} onScale(e); e.preventDefault(); });
     hRscale.addEventListener('pointermove', function(e){ if(sd) onScale(e); });
@@ -2879,10 +2884,14 @@
   scene.addEventListener('click', function(e){
     if(!isPortrait() || mview !== 'disc' || detail.hidden || modal !== 'detail') return;
     if(e.target.closest && e.target.closest('.hhot')) return;                 // não atrapalha os controles da cena
-    var pl = scene.querySelector('.hplat').getBoundingClientRect();
-    if(e.clientX < pl.left || e.clientX > pl.right || e.clientY < pl.top || e.clientY > pl.bottom) return;
     playClick('ui'); minimizeDetail();
   });
+  (function(){ var mc0 = $('mCov'); if(!mc0) return;
+    mc0.setAttribute('role', 'button'); mc0.setAttribute('tabindex', '0'); mc0.setAttribute('aria-label', 'Voltar à gaveta'); mc0.title = 'Voltar à gaveta (o som continua)';
+    function back(){ if(!isPortrait() || detail.hidden || modal !== 'detail') return; playClick('ui'); minimizeDetail(); }
+    mc0.addEventListener('click', back);
+    mc0.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); back(); } });
+  })();
   if(mmq){ var mqf = function(){ fitScene(); }; if(mmq.addEventListener) mmq.addEventListener('change', mqf); else if(mmq.addListener) mmq.addListener(mqf); }
 
   function mRows(ul, rows, cur, click){
@@ -3344,6 +3353,33 @@
     }, (already || reduceMotion) ? 0 : 700);
   }
   /* ---------- sorteio: escolhe um disco ao acaso entre TODAS as gavetas de TODOS os balcões e abre ---------- */
+  /* folheia a gaveta até o disco sorteado, PARA um instante para dar tempo de ver qual saiu e só então abre e toca */
+  var raffleTok = 0;
+  function raffleReveal(d, k){
+    var tok = ++raffleTok;
+    function alive(){ return tok === raffleTok && !opened && curDrawer === d && !stage.hidden && N > k; }
+    var cur = clamp(Math.round(target), 0, N - 1), dist = k - cur;
+    var steps = reduceMotion ? 0 : Math.min(Math.abs(dist), 12), i = 0;
+    function settle(){
+      if(!alive()) return;
+      target = k; kick();
+      var tries = 0;
+      (function wait(){
+        if(!alive()) return;
+        if((Math.abs(pos - k) < 0.03 && Math.abs(vel) < 0.1) || ++tries > 60){
+          setTimeout(function(){                                   // pausa com o disco sorteado à vista
+            if(alive() && clamp(Math.round(target), 0, N - 1) === k) openDetail(k, true);
+          }, reduceMotion ? 500 : 1600);
+        } else setTimeout(wait, 60);
+      })();
+    }
+    (function step(){
+      if(!alive()) return;
+      if(++i >= steps){ settle(); return; }
+      target = clamp(Math.round(cur + dist * i / steps), 0, N - 1); kick();
+      setTimeout(step, 90);
+    })();
+  }
   function raffle(){
     if(camBusy || cBusy) return;                                 // a câmera está se mexendo
     if(opened){                                                  // disco aberto (aba Sortear do celular): volta à loja e sorteia
@@ -3364,9 +3400,9 @@
     ensureAudio();
     function start(){
       if(counterOf(p.d) !== curCounter){ curCounter = counterOf(p.d); renderShop(); setChrome(false); }   // vai até o balcão do disco
-      enterDrawer(p.d, function(){ setTimeout(function(){ if(!opened) openDetail(p.k); }, reduceMotion ? 0 : 650); });
+      enterDrawer(p.d, function(){ setTimeout(function(){ if(!opened) raffleReveal(p.d, p.k); }, reduceMotion ? 0 : 600); });
     }
-    if(curDrawer === p.d && !stage.hidden && N > p.k) openDetail(p.k);              // já está nessa gaveta
+    if(curDrawer === p.d && !stage.hidden && N > p.k) raffleReveal(p.d, p.k);       // já está nessa gaveta
     else if(curDrawer >= 0){                                                        // está em outra gaveta: volta à loja primeiro
       showShop();
       var w = setInterval(function(){ if(!camBusy){ clearInterval(w); start(); } }, 80);
@@ -3806,8 +3842,8 @@
     if(!powered) return;
     var n = radio.list.length;
     if(!n){ radSelect(0); return; }
-    if(m.mode === 'rel' || m.mode === 'rel2'){ var d = m.mode === 'rel' ? (raw < 64 ? raw : raw - 128) : raw - 64; if(d) radSelect(radio.idx + (d > 0 ? 1 : -1)); }
-    else radSelect(raw / 127 * (n - 1));
+    if(m.mode === 'rel' || m.mode === 'rel2'){ var d = m.mode === 'rel' ? (raw < 64 ? raw : raw - 128) : raw - 64; if(d) radSelect(radio.idx + (d > 0 ? -1 : 1)); }
+    else radSelect((1 - raw / 127) * (n - 1));
   }
   function midiVolume(raw){
     var v = Math.round(raw / 127 * 100), tgt = muted ? 0 : volume;
