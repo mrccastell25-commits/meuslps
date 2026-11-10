@@ -4407,7 +4407,7 @@
     if(!force && cdDirty() && !confirm('Há alterações não salvas. Sair e perdê-las?')) return;
     crud.on = false; $('crudPanel').hidden = true; crud.work = {}; opened = false; modal = null;
   }
-  function cdAdminChanged(){ var b = $('crudBtn'); if(b) b.hidden = !isAdmin; if(!isAdmin && crud.on) cdClose(true); }
+  function cdAdminChanged(){ var b = $('crudBtn'); if(b) b.hidden = !isAdmin; if(!isAdmin && crud && crud.on) cdClose(true); }   // chamada já na inicialização, antes de "crud" existir
   $('crudBtn').addEventListener('click', cdOpen);
   $('cdClose').addEventListener('click', function(){ cdClose(false); });
   $('cdSave').addEventListener('click', cdSave);
