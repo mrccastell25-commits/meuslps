@@ -283,6 +283,7 @@
   .hnav{font:600 14.5px/33px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-align:center;color:#e9d3a2;border:1.5px solid #b8924f;border-radius:7px;letter-spacing:.3px;
     background:linear-gradient(#2d241d,#14100d);box-shadow:0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
   .hnav[disabled]{opacity:.4}
+  .hhot[hidden]{display:none!important}
 
   /* chaves (alavanca da foto espelhada = para cima) e LEDs */
   .htog{border-radius:5px}
@@ -1000,8 +1001,6 @@
       <div class="actions">
         <button class="ctl main" id="dClose" type="button">Voltar à gaveta (continua tocando)</button>
         <button class="ctl" id="dMin" type="button">Voltar à loja (continua tocando)</button>
-        <button class="ctl" id="fMix" type="button" hidden title="Monta uma fita com faixas sorteadas das gavetas e já começa a tocar">♪ Criar fita rápida</button>
-        <button class="ctl" id="fErase" type="button" hidden>Apagar fita</button>
         <a class="ctl" id="dOpen" target="_blank" rel="noopener">Abrir no YouTube Music</a>
       </div>
     </div>
@@ -2469,7 +2468,7 @@
   function hifiRefresh(){
     if(!hHot.hPower) return;
     var tu = dmode() === 'tape';              // desktop: no modo fita, criar/apagar fita ocupam o lugar do "Abrir no YouTube Music"
-    if(tu !== tapeUiOn){ tapeUiOn = tu; $('fMix').hidden = !tu; $('fErase').hidden = !tu; $('dOpen').hidden = tu; }
+    if(tu !== tapeUiOn && hHot.hOpen && hHot.hMix){ tapeUiOn = tu; hHot.hMix.hidden = !tu; hHot.hErase.hidden = !tu; hHot.hOpen.hidden = tu; }
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
     if(!powered){
       if(lcdSig !== 'off'){
@@ -2805,6 +2804,10 @@
   hot('hShop', 'Voltar à loja', 544, 803, 150, 38, 'rect hnav', goShop).title = 'Voltar à loja (o som continua)';
   hot('hOpen', 'Abrir no YouTube Music', 704, 803, 214, 38, 'rect hnav', null, 'a');
   hHot.hOpen.target = '_blank'; hHot.hOpen.rel = 'noopener';
+  /* no modo fita, estes dois ocupam o lugar do "Abrir no YouTube Music" (a alternância está no hifiRefresh) */
+  hot('hMix', 'Criar fita', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
+  hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
+  hHot.hMix.hidden = true; hHot.hErase.hidden = true;
 
   hLcd1.addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('.lcdl') : null;
@@ -2913,8 +2916,6 @@
   $('fStop').addEventListener('click', function(){ deckStop(); });
   $('fRew').addEventListener('click', function(){ deckShuttle(-1); });
   $('fFf').addEventListener('click', function(){ deckShuttle(1); });
-  $('fErase').addEventListener('click', tapeErase);
-  $('fMix').addEventListener('click', tapeMix);
   $('rOn').addEventListener('click', function(){ if(powered) setSource(mode === 'radio' ? srcSel : 'radio'); });
   $('rPrev').addEventListener('click', function(){ if(mode === 'radio') radioStep(-1); });
   $('rNext').addEventListener('click', function(){ if(mode === 'radio') radioStep(1); });
