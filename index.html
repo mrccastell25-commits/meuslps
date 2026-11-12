@@ -1925,6 +1925,11 @@
     if(!isPortrait()){ note(mode === 'radio' ? 'Desligue o rádio (alavanca RADIO-TAPE) para usar o deck de fita.' : msg); return false; }
     return setSource(src) !== false;
   }
+  /* virar a chave SOURCE com a mão (imagem ou MIDI): para disco sem nenhum disco no prato, não há o que mostrar: volta à loja */
+  function chaveSet(tg){
+    setSource(tg);
+    if(tg === 'lp' && !PA().tracks.length && opened && modal === 'detail'){ closeDetail(); showShop(); toast('Nenhum disco no prato: voltei à loja.'); }
+  }
   function setSource(src){
     if(src === mode) return true;
     if(rec.on && src !== 'lp'){ note(mode === 'lp' ? 'Pare a gravação antes de trocar de fonte.' : 'Pare a gravação antes de ouvir a fita.'); return false; }
@@ -2710,7 +2715,7 @@
   tog('hSource', 'Fonte: disco (alavanca para cima) ou fita (para baixo)', 1549, function(){
     if(!powered) return;
     if(mode === 'radio'){ srcSel = srcSel === 'lp' ? 'tape' : 'lp'; lcdSig = ''; hifiRefresh(); }   // rádio ligado: só troca a posição da chave; vale quando o rádio desligar
-    else setSource(mode === 'lp' ? 'tape' : 'lp');
+    else chaveSet(mode === 'lp' ? 'tape' : 'lp');
   });
   tog('hFilter', 'Filtro (ligado = sem ruído; desligado = ruído de vinil / fita)', 1603, function(){ filterOn = !filterOn; });
   [['hLedP', 1512.5, '#ffe14a', 'rgba(255,225,60,.7)'], ['hLedS', 1566, '#3dffa0', 'rgba(60,255,160,.65)'], ['hLedF', 1619.5, '#ff4a3a', 'rgba(255,70,50,.7)']].forEach(function(l){
@@ -3997,7 +4002,7 @@
   function midiSwitch(id, pos){
     if(!midiNeedDisc()) return;
     if(id === 'swPower') setPower(pos);
-    else if(id === 'swSource'){ if(powered){ var tg = pos ? 'lp' : 'tape'; if(mode === 'radio'){ srcSel = tg; lcdSig = ''; hifiRefresh(); } else if(mode !== tg) setSource(tg); } }
+    else if(id === 'swSource'){ if(powered){ var tg = pos ? 'lp' : 'tape'; if(mode === 'radio'){ srcSel = tg; lcdSig = ''; hifiRefresh(); } else if(mode !== tg) chaveSet(tg); } }
     else if(id === 'swFilter') filterOn = pos;
     playClick('tog');
   }
