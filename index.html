@@ -904,6 +904,7 @@
       <p class="mhelp">Para gravar: toque um disco, vá à tela Tape Deck e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
       <h3 class="mh">MINHA FITA</h3>
       <ul class="mlist" id="mTapeList"></ul>
+      <button class="mbtn2 wide" id="mtMix" type="button">♪ Criar fita rápida (faixas sorteadas)</button>
       <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
     </section>
 
@@ -980,6 +981,7 @@
           <button class="ctl" id="fPlay" type="button">▶ Fita</button>
           <button class="ctl" id="fStop" type="button" aria-label="Parar a fita">■</button>
           <button class="ctl" id="fFf" type="button" aria-label="Avançar">⏩</button>
+          <button class="ctl" id="fMix" type="button" title="Monta uma fita com faixas sorteadas das gavetas e já começa a tocar">♪ Fita rápida</button>
           <button class="ctl" id="fErase" type="button">Apagar fita</button>
         </div>
       </div>
@@ -1880,7 +1882,7 @@
       var g = tape.segs[i];
       if(s + g.dur <= pos + 0.05){ out.push(g); s += g.dur; continue; }
       var keep = pos - s;
-      if(keep >= 1){ g.dur = keep; out.push(g); }
+      if(keep >= 1){ g.dur = keep; g.est = false; out.push(g); }
       break;
     }
     tape.segs = out; tapeSave();
@@ -1950,12 +1952,15 @@
       else if(!apiReady) note('Carregando o player do YouTube…');
     }catch(e){}
   }
+  function segOpts(g, off){            // trecho com duração estimada (fita rápida) não leva endSeconds: toca até o fim da faixa
+    var o = {videoId: g.vid, startSeconds: g.start + (off || 0)}; if(!g.est) o.endSeconds = g.start + g.dur; return o;
+  }
   function playTapeAt(pos){
     var L = tapeLen(); if(!L) return;
     var s = segAt(clamp(pos, 0, L - 0.05)); if(!s) return;
     tapeIdx = s.i; var g = tape.segs[s.i]; tape.pos = segOffset(s.i) + s.off;
     mode = 'tape'; deck = 'play'; shuttle = 0; ytPlay = false; lastAdv = Date.now();
-    playTapeVideo({videoId: g.vid, startSeconds: g.start + s.off, endSeconds: g.start + g.dur});
+    playTapeVideo(segOpts(g, s.off));
     detail.classList.remove('playing');
   }
   function tapeAdvance(){
@@ -1966,7 +1971,7 @@
       note('Fim da fita.'); return;
     }
     tapeIdx++; var g = tape.segs[tapeIdx]; tape.pos = segOffset(tapeIdx); ytPlay = false;
-    try{ player.loadVideoById({videoId: g.vid, startSeconds: g.start, endSeconds: g.start + g.dur}); }catch(e){}
+    try{ player.loadVideoById(segOpts(g, 0)); }catch(e){}
   }
   function deckPlay(toggle){
     if(!powered || rec.on) return;
@@ -2013,6 +2018,39 @@
     if(tgt >= tape.segs.length) return;
     tape.pos = segOffset(tgt);
     if(deck === 'play' && mode === 'tape') playTapeAt(tape.pos);
+  }
+  /* ----- FITA RÁPIDA: coletânea aleatória com faixas de todas as gavetas, como uma playlist relâmpago -----
+     Não dá para saber a duração de uma faixa sem tocá-la, então cada trecho nasce com duração estimada (est:true)
+     e é corrigido quando a faixa começa a tocar. A fita fica na sessionStorage: dura até a aba/o app ser fechado. */
+  var QUICK_N = 12, QUICK_EST = 210;     // 12 faixas × ~3min30 cabem num lado de C-90
+  function tapeEst(){ for(var i = 0; i < tape.segs.length; i++) if(tape.segs[i].est) return true; return false; }
+  function tapeMix(){
+    if(rec.on){ note('Pare a gravação antes de montar uma fita rápida.'); return; }
+    if(tape.segs.length && window.confirm && !window.confirm('Montar uma fita rápida vai substituir a fita atual. Continuar?')) return;
+    var pool = [], seen = {}, d, i, j, list, t;
+    for(d = 0; d < NDRAW; d++){
+      list = parseList(drawerText(d));
+      for(i = 0; i < list.length; i++) for(j = 0; j < list[i].tracks.length; j++){
+        t = list[i].tracks[j]; if(seen[t.id]) continue; seen[t.id] = 1;
+        pool.push({id: t.id, title: t.title, artist: list[i].artist || '', album: list[i].title});
+      }
+    }
+    if(!pool.length){ note('Não há discos nas gavetas para montar a fita.'); return; }
+    for(i = pool.length - 1; i > 0; i--){ j = Math.floor(Math.random() * (i + 1)); t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+    var picks = [], perAlbum = {}, left = [];
+    pool.forEach(function(x){                         // no máximo 2 faixas por disco, para a fita ficar variada
+      if(picks.length >= QUICK_N) return;
+      if((perAlbum[x.album] || 0) < 2){ perAlbum[x.album] = (perAlbum[x.album] || 0) + 1; picks.push(x); } else left.push(x);
+    });
+    while(picks.length < QUICK_N && left.length) picks.push(left.shift());
+    if(mode === 'tape'){ try{ if(player && playerReady) player.pauseVideo(); }catch(e){} }
+    tape = {segs: picks.map(function(x){ return {vid: x.id, title: x.title, artist: x.artist, album: x.album, start: 0, dur: QUICK_EST, est: true}; }), pos: 0};
+    deck = 'stop'; shuttle = 0; tapeIdx = -1; lcdSig = ''; tapeSave();
+    if(!powered){ note('Fita rápida pronta (' + picks.length + ' faixas). Ligue o aparelho e aperte play.'); return; }
+    ensureAudio();
+    if(mode !== 'tape' && setSource('tape') === false) return;
+    playTapeAt(0);
+    note('Fita rápida: ' + picks.length + ' faixas sorteadas.');
   }
   function tapeErase(){
     if(rec.on) recStop();
@@ -2231,8 +2269,13 @@
     } else if(deck === 'play' && mode === 'tape' && ytPlay && !adActive){
       var g2 = tape.segs[tapeIdx];
       if(g2){
+        if(g2.est && cur > 0.3){           // fita rápida: descobre a duração real assim que o YouTube informa
+          try{ var vd = player.getDuration() || 0, vdata = player.getVideoData ? player.getVideoData() : null;
+            if(vd > 1 && vdata && vdata.video_id === g2.vid){ g2.dur = Math.max(1, vd - g2.start); g2.est = false; tapeSave(); }
+          }catch(e){}
+        }
         tape.pos = segOffset(tapeIdx) + clamp(cur - g2.start, 0, g2.dur);
-        if(cur >= g2.start + g2.dur - 0.2 && Date.now() - lastAdv > 900) tapeAdvance();
+        if(!g2.est && cur >= g2.start + g2.dur - 0.2 && Date.now() - lastAdv > 900) tapeAdvance();
       }
     }
     adWatch();
@@ -2468,7 +2511,7 @@
     var rl = radio.list[radio.idx];
     $('rInfo').textContent = mode === 'radio' ? (radio.list.length ? (radio.state === 'playing' ? 'Ouvindo: ' : radio.state === 'error' ? 'Sem sinal: ' : 'Sintonizando: ') + rl.name : (radio.loading ? 'Buscando rádios do RS…' : 'Sem rádios')) : 'Rádio desligado';
     $('rOn').classList.toggle('on', mode === 'radio');
-    $('tInfo').textContent = (ns2 ? 'Fita: ' + ns2 + (ns2 === 1 ? ' faixa' : ' faixas') + ' · ' + fmt(tapeLen()) + ' de ' + fmt(TAPE_CAP) : 'Fita vazia (' + fmt(TAPE_CAP) + ' livres)')
+    $('tInfo').textContent = (ns2 ? 'Fita: ' + ns2 + (ns2 === 1 ? ' faixa' : ' faixas') + ' · ' + (tapeEst() ? '~' : '') + fmt(tapeLen()) + ' de ' + fmt(TAPE_CAP) : 'Fita vazia (' + fmt(TAPE_CAP) + ' livres)')
       + (rec.on ? ' · GRAVANDO' : (mode === 'tape' ? ' · ouvindo a fita' : ''));
   }
 
@@ -2867,6 +2910,7 @@
   $('fRew').addEventListener('click', function(){ deckShuttle(-1); });
   $('fFf').addEventListener('click', function(){ deckShuttle(1); });
   $('fErase').addEventListener('click', tapeErase);
+  $('fMix').addEventListener('click', tapeMix);
   $('rOn').addEventListener('click', function(){ if(powered) setSource(mode === 'radio' ? srcSel : 'radio'); });
   $('rPrev').addEventListener('click', function(){ if(mode === 'radio') radioStep(-1); });
   $('rNext').addEventListener('click', function(){ if(mode === 'radio') radioStep(1); });
@@ -2998,14 +3042,14 @@
     } else if(mview === 'tape'){
       var ns = tape.segs.length;
       mTxt('mTapeCnt', (rec.on ? '● ' : '') + fmt(tape.pos));
-      mTxt('mTapeSub', (ns ? ns + (ns === 1 ? ' faixa' : ' faixas') + ' · ' + fmt(tapeLen()) : 'Fita vazia') + ' de ' + fmt(TAPE_CAP) + (rec.on ? ' · gravando' : mode === 'tape' && deck === 'play' ? ' · tocando' : ''));
+      mTxt('mTapeSub', (ns ? ns + (ns === 1 ? ' faixa' : ' faixas') + ' · ' + (tapeEst() ? '~' : '') + fmt(tapeLen()) : 'Fita vazia') + ' de ' + fmt(TAPE_CAP) + (rec.on ? ' · gravando' : mode === 'tape' && deck === 'play' ? ' · tocando' : ''));
       var run = deck === 'play' || rec.on;
       var on = {mtRec: rec.on, mtPlay: run, mtFf: deck === 'ff', mtRew: deck === 'rew', mtStop: false, mtPause: run && !ytPlay && powered};
       for(var id in on) $(id).classList.toggle('on', !!on[id]);
       $('mtRec').classList.toggle('blink', rec.on && !ytPlay);
       var lv = $('mtLvl'); if(document.activeElement !== lv && mc.lvl !== recLevel){ mc.lvl = recLevel; lv.value = recLevel; lv.style.setProperty('--p', recLevel + '%'); }
-      var sg = ns + '|' + tapeCur() + '|' + Math.floor(tapeLen());
-      if(sg !== mc.sigTape){ mc.sigTape = sg; mRows($('mTapeList'), tape.segs.map(function(g){ return [g.title + (g.artist ? ' — ' + g.artist : ''), fmt(g.dur)]; }), tapeCur()); }
+      var sg = ns + '|' + tapeCur() + '|' + Math.floor(tapeLen()) + '|' + tape.segs.filter(function(g){ return g.est; }).length;
+      if(sg !== mc.sigTape){ mc.sigTape = sg; mRows($('mTapeList'), tape.segs.map(function(g){ return [g.title + (g.artist ? ' — ' + g.artist : ''), (g.est ? '~' : '') + fmt(g.dur)]; }), tapeCur()); }
     } else if(mview === 'radio'){
       var rr = radio.list[radio.idx], ron = mode === 'radio';
       mTxt('mRName', rr ? rr.name : (radio.loading ? 'Buscando rádios…' : 'Sem rádios'));
@@ -3052,6 +3096,7 @@
   mTap('mtRec', function(){ if(rec.on) recStop(); else recStart(); });
   mTap('mtStop', function(){ if(powered) deckStop(); });
   mTap('mtPause', function(){ deckPauseKey(); });
+  mTap('mtMix', function(){ tapeMix(); });
   mTap('mtErase', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
   $('mtLvl').addEventListener('input', function(e){ setRecLevel(+e.target.value); mc.lvl = recLevel; e.target.style.setProperty('--p', recLevel + '%'); });
   $('mTapeList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('ui'); tapeJump(+b.getAttribute('data-i')); mobRefresh(); } });
