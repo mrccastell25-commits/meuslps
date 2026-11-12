@@ -281,7 +281,7 @@
   .hhot:active:not([disabled]){background:rgba(0,0,0,.25)}
   .hhot:focus-visible{outline:2px solid #ffd58a;outline-offset:2px}
   .hhot[disabled]{cursor:default;pointer-events:none}
-  .detail.playing #hPlay{box-shadow:0 0 22px 6px rgba(255,225,170,.5)}
+  .hhot.rlit{box-shadow:0 0 22px 6px rgba(255,225,170,.5)}   /* luz dos botões redondos: ver rndLights() */
   .hnav{font:600 14.5px/33px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-align:center;color:#e9d3a2;border:1.5px solid #b8924f;border-radius:7px;letter-spacing:.3px;
     background:linear-gradient(#2d241d,#14100d);box-shadow:0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
   .hnav[disabled]{opacity:.4}
@@ -372,7 +372,6 @@
   .scene.off .hvu{filter:brightness(.28) saturate(.55)}
   .htoff{background:rgba(10,6,4,.84)}
   .scene.off .htube{opacity:0!important}
-  .detail.playing .scene.off #hPlay{box-shadow:none!important}
 
   /* balcão da loja: a placa "Gaveta N" ganha uma abertura por onde se vê o LP lá dentro */
   .fwin{position:absolute;pointer-events:none;overflow:hidden;border-radius:2px;background:#100b07;filter:sepia(.22) saturate(.85) contrast(.95) brightness(.7)}
@@ -2491,6 +2490,7 @@
     var dmx = dmode();                        // desktop: no modo fita, criar/apagar ocupam o lugar do "Abrir no YouTube Music"; no rádio ele não faz sentido
     if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix){ tapeUiOn = dmx; hHot.hMix.hidden = dmx !== 'tape'; hHot.hErase.hidden = dmx !== 'tape'; hHot.hOpen.hidden = dmx !== 'lp'; }
     if(hHot.hErase) hHot.hErase.disabled = !tape.segs.length;
+    rndLights();
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
     if(!powered){
       if(lcdSig !== 'off'){
@@ -2694,10 +2694,24 @@
     if(mode === 'tape'){ note('A chave SOURCE está em fita: use as teclas do tape deck (ou ponha a chave em disco).'); return false; }   // a chave só muda pela mão do usuário
     return true;
   }
-  function rndPrev(){ if(rndReady()) mainPrev(); }
-  function rndPlay(){ if(rndReady()) mainPlay(); }
-  function rndNext(){ if(rndReady()) mainNext(); }
-  function rndStop(){ if(rndReady()) mainStop(); }
+  /* luzes dos botões redondos: apagados na fita; no disco/rádio acende só o que está valendo.
+     PLAY = está tocando de fato · STOP = foi parado por você · ⏮ ⏭ = piscam ao toque. Tudo derivado do estado real. */
+  var rndStopOn = false, rndMode = null, rndWasPlaying = false;
+  function rndLights(){
+    var dm = dmode(), on = powered && dm !== 'tape';
+    var playing = on && (dm === 'radio' ? (radio.state === 'playing' || radio.state === 'loading') : ytPlay);
+    if(dm !== rndMode){ rndMode = dm; rndStopOn = false; }
+    if(!on || (playing && !rndWasPlaying)) rndStopOn = false;   // o áudio só avisa que parou alguns ms depois do clique: só zera quando COMEÇA a tocar
+    rndWasPlaying = !!playing;
+    if(hHot.hPlay) hHot.hPlay.classList.toggle('rlit', !!playing);
+    if(hHot.hStop) hHot.hStop.classList.toggle('rlit', on && rndStopOn && !playing);
+    if(!on){ if(hHot.hPrev) hHot.hPrev.classList.remove('rlit'); if(hHot.hNext) hHot.hNext.classList.remove('rlit'); }
+  }
+  function rndFlash(id){ var e = hHot[id]; if(!e) return; e.classList.add('rlit'); setTimeout(function(){ e.classList.remove('rlit'); }, 320); }
+  function rndPrev(){ if(rndReady()){ rndStopOn = false; rndFlash('hPrev'); mainPrev(); } }
+  function rndPlay(){ if(rndReady()){ rndStopOn = false; mainPlay(); rndLights(); } }
+  function rndNext(){ if(rndReady()){ rndStopOn = false; rndFlash('hNext'); mainNext(); } }
+  function rndStop(){ if(rndReady()){ mainStop(); rndStopOn = true; rndLights(); } }
   hotC('hPrev', 'Faixa anterior', 1284, 553, 17, rndPrev);
   hotC('hPlay', 'Tocar ou pausar', 1323, 553, 19, rndPlay);
   hotC('hNext', 'Próxima faixa', 1363, 553, 17, rndNext);
