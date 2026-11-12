@@ -637,6 +637,7 @@
   #skip{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.35);color:#fff;border-radius:999px;padding:9px 16px;font-weight:700;font-size:13px}
   .note{min-height:1.4em;margin:8px 0 0;color:var(--sticker);font-size:13px}
   .actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px}
+  .ctl[hidden]{display:none}
   .ctl{border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;border-radius:999px;padding:11px 16px;font-weight:700;font-size:14px;text-decoration:none;display:inline-block}
   .ctl:hover{background:rgba(255,255,255,.1)}
   .ctl[disabled]{opacity:.35;cursor:default}
@@ -981,8 +982,6 @@
           <button class="ctl" id="fPlay" type="button">▶ Fita</button>
           <button class="ctl" id="fStop" type="button" aria-label="Parar a fita">■</button>
           <button class="ctl" id="fFf" type="button" aria-label="Avançar">⏩</button>
-          <button class="ctl" id="fMix" type="button" title="Monta uma fita com faixas sorteadas das gavetas e já começa a tocar">♪ Fita rápida</button>
-          <button class="ctl" id="fErase" type="button">Apagar fita</button>
         </div>
       </div>
       <div class="tape" id="radioBar" aria-label="Rádio">
@@ -1001,6 +1000,8 @@
       <div class="actions">
         <button class="ctl main" id="dClose" type="button">Voltar à gaveta (continua tocando)</button>
         <button class="ctl" id="dMin" type="button">Voltar à loja (continua tocando)</button>
+        <button class="ctl" id="fMix" type="button" hidden title="Monta uma fita com faixas sorteadas das gavetas e já começa a tocar">♪ Criar fita rápida</button>
+        <button class="ctl" id="fErase" type="button" hidden>Apagar fita</button>
         <a class="ctl" id="dOpen" target="_blank" rel="noopener">Abrir no YouTube Music</a>
       </div>
     </div>
@@ -2464,8 +2465,11 @@
   function hifiTime(c, d){ lpCur = c; lpDur = d; hifiRefresh(); }
 
   var lastTxt = {t: null, c: null, d: null, f: null, led: null};
+  var tapeUiOn = null;
   function hifiRefresh(){
     if(!hHot.hPower) return;
+    var tu = dmode() === 'tape';              // desktop: no modo fita, criar/apagar fita ocupam o lugar do "Abrir no YouTube Music"
+    if(tu !== tapeUiOn){ tapeUiOn = tu; $('fMix').hidden = !tu; $('fErase').hidden = !tu; $('dOpen').hidden = tu; }
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
     if(!powered){
       if(lcdSig !== 'off'){
