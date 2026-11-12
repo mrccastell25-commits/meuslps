@@ -284,6 +284,11 @@
     background:linear-gradient(#2d241d,#14100d);box-shadow:0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
   .hnav[disabled]{opacity:.4}
   .hhot[hidden]{display:none!important}
+  .hnav.hmix{color:#eafff1;font-weight:800;border-color:#7dffb0;background:linear-gradient(#21503a,#0d2a1d);
+    box-shadow:0 0 12px rgba(125,255,176,.6),0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.22)}
+  .hnav.herase{color:#ffe9e5;font-weight:800;border-color:#ff7a66;background:linear-gradient(#5e2219,#2a0f0b);
+    box-shadow:0 0 12px rgba(255,110,90,.5),0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18)}
+  .hnav.hmix:not([disabled]):hover,.hnav.herase:not([disabled]):hover{filter:brightness(1.18)}
 
   /* chaves (alavanca da foto espelhada = para cima) e LEDs */
   .htog{border-radius:5px}
@@ -1901,7 +1906,7 @@
     if(!powered) return;
     if(mode === 'radio'){ note('Não dá para gravar a rádio: o navegador não captura o áudio dela.'); return; }
     if(!PA().tracks.length){ note('Escolha um disco na loja para gravar.'); return; }
-    if(mode !== 'lp' && setSource('lp') === false) return;
+    if(!needSrc('lp', 'Ponha a chave SOURCE em disco para gravar.')) return;
     eraseFrom(tape.pos); tape.pos = tapeLen();
     if(tape.pos >= TAPE_CAP - 1){ note('A fita está cheia. Volte ao começo (REW) para regravar.'); return; }
     deck = 'rec'; rec.on = true; rec.seg = null; shuttle = 0;
@@ -1914,6 +1919,12 @@
   }
 
   /* ----- fonte (disco ou fita) ----- */
+  /* desktop: a chave SOURCE só muda pela mão do usuário (no celular não há chave: as abas escolhem a fonte) */
+  function needSrc(src, msg){
+    if(mode === src) return true;
+    if(!isPortrait()){ note(mode === 'radio' ? 'Desligue o rádio (alavanca RADIO-TAPE) para usar o deck de fita.' : msg); return false; }
+    return setSource(src) !== false;
+  }
   function setSource(src){
     if(src === mode) return true;
     if(rec.on && src !== 'lp'){ note(mode === 'lp' ? 'Pare a gravação antes de trocar de fonte.' : 'Pare a gravação antes de ouvir a fita.'); return false; }
@@ -1981,7 +1992,7 @@
     }
     if(!tape.segs.length){ note('Fita vazia. Toque um disco e aperte REC.'); return; }
     if(tape.pos >= tapeLen() - 0.5){ note('Fim da fita. Rebobine (REW) para ouvir de novo.'); return; }
-    if(mode !== 'tape' && setSource('tape') === false) return;
+    if(!needSrc('tape', 'Ponha a chave SOURCE em fita para ouvir a fita.')) return;
     playTapeAt(tape.pos);
   }
   function deckStop(){
@@ -2231,6 +2242,7 @@
     if(!powered) return;
     if(mode === 'radio'){ radioToggle(); return; }
     if(mode === 'tape'){ deckPlay(true); return; }
+    if(!PA().tracks.length){ note('Nenhum disco no prato. Escolha um disco na loja.'); return; }
     if(!player || !playerReady) return;
     try{ if(player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo(); }catch(e){}
   }
@@ -2467,8 +2479,9 @@
   var tapeUiOn = null;
   function hifiRefresh(){
     if(!hHot.hPower) return;
-    var tu = dmode() === 'tape';              // desktop: no modo fita, criar/apagar fita ocupam o lugar do "Abrir no YouTube Music"
-    if(tu !== tapeUiOn && hHot.hOpen && hHot.hMix){ tapeUiOn = tu; hHot.hMix.hidden = !tu; hHot.hErase.hidden = !tu; hHot.hOpen.hidden = tu; }
+    var dmx = dmode();                        // desktop: no modo fita, criar/apagar ocupam o lugar do "Abrir no YouTube Music"; no rádio ele não faz sentido
+    if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix){ tapeUiOn = dmx; hHot.hMix.hidden = dmx !== 'tape'; hHot.hErase.hidden = dmx !== 'tape'; hHot.hOpen.hidden = dmx !== 'lp'; }
+    if(hHot.hErase) hHot.hErase.disabled = !tape.segs.length;
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
     if(!powered){
       if(lcdSig !== 'off'){
@@ -2667,7 +2680,11 @@
 
   /* transporte (funciona na fonte ativa: disco ou fita) */
   /* botões redondos: só atuam no disco e no rádio (nunca nas teclas do tape deck) */
-  function rndReady(){ if(!powered) return false; if(mode === 'tape' && setSource('lp') === false) return false; return true; }
+  function rndReady(){
+    if(!powered) return false;
+    if(mode === 'tape'){ note('A chave SOURCE está em fita: use as teclas do tape deck (ou ponha a chave em disco).'); return false; }   // a chave só muda pela mão do usuário
+    return true;
+  }
   function rndPrev(){ if(rndReady()) mainPrev(); }
   function rndPlay(){ if(rndReady()) mainPlay(); }
   function rndNext(){ if(rndReady()) mainNext(); }
@@ -2807,6 +2824,7 @@
   /* no modo fita, estes dois ocupam o lugar do "Abrir no YouTube Music" (a alternância está no hifiRefresh) */
   hot('hMix', 'Criar fita', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
   hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
+  hHot.hMix.classList.add('hmix'); hHot.hErase.classList.add('herase');
   hHot.hMix.hidden = true; hHot.hErase.hidden = true;
 
   hLcd1.addEventListener('click', function(e){
