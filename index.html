@@ -1941,7 +1941,8 @@
       tapeHalt(); mode = 'lp'; ytPlay = false;
       var a2 = PA(), t2 = a2 && a2.tracks[curTrack];
       var st = (lpResume && lpResume.album === PA() && lpResume.track === curTrack) ? lpResume.t : 0;
-      try{ if(player && playerReady && t2) player.cueVideoById({videoId: t2.id, startSeconds: st}); }catch(e){}
+      try{ if(player && playerReady){ if(t2) player.cueVideoById({videoId: t2.id, startSeconds: st}); else player.pauseVideo(); } }catch(e){}   // sem disco no prato: ao menos cala o que estava tocando (a fita)
+      if(!t2 && from !== 'lp') note('Nenhum disco no prato. Escolha um disco na loja.');
     } else if(src === 'tape'){
       tapeHalt(); mode = 'tape'; ytPlay = false;
     } else {
