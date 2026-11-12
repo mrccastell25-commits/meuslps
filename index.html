@@ -244,12 +244,14 @@
     background:radial-gradient(ellipse at 50% 40%,#0b2a18,#04120a 75%);box-shadow:inset 0 0 14px #000}
   .hlcd1::after,.hlcd2::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:5px;background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
   .scene.off .hlcd1,.scene.off .hlcd2{background:#050806;box-shadow:inset 0 0 14px #000}
-  .hlcd1{left:1202px;top:258px;width:254px;height:108px;padding-top:6px;box-sizing:border-box}
-  .lcdl{display:grid;grid-template-columns:30px 1fr;align-items:center;width:100%;height:16.3px;padding:0 14px 0 11px;border:0;background:transparent;color:inherit;font:inherit;font-size:12.5px;text-align:left;text-shadow:inherit;white-space:nowrap;cursor:pointer}
+  .hlcd1{left:1202px;top:258px;width:254px;height:108px;padding-top:3px;box-sizing:border-box}
+  .lcdtag{display:block;height:14.5px;line-height:14.5px;padding:0 11px;box-sizing:border-box;text-align:center;font-size:11px;font-weight:800;letter-spacing:3px;
+    color:#fff;text-shadow:none;background:linear-gradient(#e8382a,#b71f14);box-shadow:0 0 8px rgba(255,60,40,.55);pointer-events:none}
+  .lcdl{display:grid;grid-template-columns:30px 1fr;align-items:center;width:100%;height:14.5px;padding:0 14px 0 11px;border:0;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;text-shadow:inherit;white-space:nowrap;cursor:pointer}
   .lcdl .lt{overflow:hidden;text-overflow:ellipsis}
   .lcdl:hover{background:rgba(109,255,154,.16)}
   .lcdl.cur{background:#2bf08a;color:#03140a;text-shadow:none}
-  .lcdmsg{display:block;padding:0 11px;height:16.3px;line-height:16.3px;font-size:12.5px;opacity:.8;white-space:nowrap}
+  .lcdmsg{display:block;padding:0 11px;height:14.5px;line-height:14.5px;font-size:12px;opacity:.8;white-space:nowrap}
   .lcdmore{position:absolute;right:6px;font-size:9px;opacity:.85;pointer-events:none}
   .hlcd2{left:1036px;top:501px;width:213px;height:61px}
   .l2t{position:absolute;left:23px;right:30px;top:5px;font-size:10px;line-height:12px;opacity:.88;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.3px}
@@ -2452,25 +2454,26 @@
   function hLcdRender(){
     var a = PA(); if(!a) return;
     var dm = dmode(), isTape = dm === 'tape', rows, cur, i, html = '';
+    var tag = '<span class="lcdtag">' + (dm === 'radio' ? 'RÁDIO' : isTape ? 'FITA' : 'DISCO') + '</span>';   // 1ª linha: qual fonte está no display
     if(dm === 'radio'){
       if(!radio.list.length){
-        hLcd1.innerHTML = '<span class="lcdmsg" style="margin-top:2px">' + (radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS') + '</span><span class="lcdmsg">Rio Grande do Sul</span>';
+        hLcd1.innerHTML = tag + '<span class="lcdmsg">' + (radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS') + '</span><span class="lcdmsg">Rio Grande do Sul</span>';
         return;
       }
       rows = radio.list.map(function(r){ return r.name; }); cur = radio.idx;
     } else if(isTape){
       if(!tape.segs.length){
-        hLcd1.innerHTML = '<span class="lcdmsg" style="margin-top:2px">FITA VAZIA</span><span class="lcdmsg">Toque um disco e</span><span class="lcdmsg">aperte REC.</span>';
+        hLcd1.innerHTML = tag + '<span class="lcdmsg">FITA VAZIA</span><span class="lcdmsg">Toque um disco e</span><span class="lcdmsg">aperte REC.</span>';
         return;
       }
       rows = tape.segs.map(function(g){ return g.title; }); cur = tapeCur();
     } else { rows = a.tracks.map(function(t){ return t.title; }); cur = curTrack; }
-    var n = rows.length;
+    var n = rows.length; html = tag;
     for(i = 0; i < 6; i++){
       var t = lcdTop + i; if(t >= n) break;
       html += '<button type="button" class="lcdl' + (t === cur ? ' cur' : '') + '" data-t="' + t + '"><span>' + pad2(t + 1) + '.</span><span class="lt">' + esc(rows[t]) + '</span></button>';
     }
-    if(lcdTop > 0) html += '<span class="lcdmore" style="top:6px">▲</span>';
+    if(lcdTop > 0) html += '<span class="lcdmore" style="top:19px">▲</span>';
     if(lcdTop + 6 < n) html += '<span class="lcdmore" style="bottom:6px">▼</span>';
     hLcd1.innerHTML = html;
   }
