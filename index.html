@@ -123,6 +123,8 @@
   /* o player do YouTube fica fora da tela: só o áudio é usado */
   .yt-hidden{position:fixed;left:-9999px;top:0;width:256px;height:256px;overflow:hidden;pointer-events:none}
   /* durante um comercial o player aparece, para dar para tocar em "Pular anúncio" */
+  .yt-hidden .adx{display:none}
+  .yt-hidden.ad-show .adx{display:block;position:absolute;top:6px;right:6px;z-index:2;width:28px;height:28px;padding:0;border-radius:50%;border:1.5px solid #fff;background:rgba(0,0,0,.78);color:#fff;font:700 13px/1 system-ui,sans-serif;cursor:pointer}
   .yt-hidden.ad-show{left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;pointer-events:auto;border-radius:12px;box-shadow:0 0 0 2px rgba(255,255,255,.6),0 12px 40px rgba(0,0,0,.7)}
 
   .tracks{list-style:none;margin:0 0 12px;padding:4px;max-height:24vh;overflow:auto;border-radius:10px;background:rgba(255,255,255,.07);overscroll-behavior:contain}
@@ -1017,7 +1019,7 @@
 <div class="edge" id="edge" hidden aria-hidden="true"></div>
 
 <!-- player do YouTube escondido: só o áudio -->
-<div class="yt-hidden" aria-hidden="true"><div id="ytPlayer"></div></div>
+<div class="yt-hidden" aria-hidden="true"><div id="ytPlayer"></div><button type="button" class="adx" id="adClose" aria-label="Fechar o player" title="Fechar">✕</button></div>
 
 <!-- painel para colar a lista -->
 <div class="detail" id="setup" hidden role="dialog" aria-modal="true" aria-labelledby="sTitle">
@@ -1601,7 +1603,7 @@
 
   /* ---------- volume (controla o player do YouTube de verdade) ---------- */
   var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
-  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0;   // comercial do YouTube (ver adWatch)
+  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0;   // comercial do YouTube (ver adWatch)
   var AD_SHOW_PLAYER = true;   // true: mostra o player durante o comercial para você poder tocar em "Pular anúncio"
   try{ var sv = localStorage.getItem('gaveta:vol'); if(sv !== null && !isNaN(+sv)) volume = clamp(+sv, 0, 100); }catch(e){}
   function paintVolume(){
@@ -2322,7 +2324,15 @@
     if(!player || player._adHooked) return; player._adHooked = true;
     [['pauseVideo', true], ['stopVideo', true], ['cueVideoById', true], ['playVideo', false], ['loadVideoById', false]].forEach(function(x){
       var f = player[x[0]]; if(typeof f !== 'function') return;
-      player[x[0]] = function(){ userPaused = x[1]; return f.apply(player, arguments); };
+      var other = x[0] === 'cueVideoById' || x[0] === 'loadVideoById';
+      player[x[0]] = function(){
+        userPaused = x[1];
+        if(other){   // troca de disco/faixa/fita: o vídeo que está no player agora não é "de fora" e a janela do aviso (se estava aberta) sai
+          try{ var vd = player.getVideoData && player.getVideoData(); if(vd && vd.video_id) adRecent[vd.video_id] = performance.now(); }catch(e){}
+          if(adActive) adSet(false, null, true);
+        }
+        return f.apply(player, arguments);
+      };
     });
   }
   function adExpectedId(){
@@ -2342,7 +2352,7 @@
     return o;
   }
   window.adProbe = function(){ var o = adSignals(); o.esperado = adExpectedId(); o.modo = mode; o.adActive = adActive; o.userPaused = userPaused; try{ console.log('[adProbe]', JSON.stringify(o)); }catch(e){} return o; };
-  function adSet(on, sig){
+  function adSet(on, sig, quiet){
     adActive = on; adHits = 0; adClear = 0; if(!on) adStall = 0;   // ligado: mantém o contador de "parado", senão acharia que o comercial acabou
     try{ console.info('[comercial]', on ? 'detectado' : 'terminou', sig ? JSON.stringify(sig) : ''); }catch(e){}
     applyVolume();                                    // silencia / devolve o volume que estava
@@ -2350,8 +2360,11 @@
       var box = document.querySelector('.yt-hidden');
       if(box){ box.classList.toggle('ad-show', on); box.setAttribute('aria-hidden', on ? 'false' : 'true'); }
     }
-    note(on ? 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio.' : '') : 'Fim do comercial. Som de volta.');
+    if(quiet) return;
+    var waiting = on && sig && (sig.state === -1 || sig.state === 5);   // parado sem começar: quase sempre o navegador pedindo um toque, não um comercial
+    note(on ? (waiting ? 'O player não começou sozinho. Toque no play dele (ou no ✕ para fechar).' : 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio.' : '')) : 'Fim do comercial. Som de volta.');
   }
+  $('adClose').addEventListener('click', function(){ adSnoozeUntil = performance.now() + 20000; adSet(false, null, true); note('Player fechado.'); });
   function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
     var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
     if(!ok){ if(adActive) adSet(false); adHits = adClear = adStall = 0; return; }
@@ -2359,11 +2372,13 @@
     var now = performance.now(), s = adSignals(); adRecent[exp] = now;
     // id "de fora" = não é o esperado nem um que acabou de ser o esperado (troca de faixa ainda carregando)
     function foreign(r){ return !!r && r !== exp && !(adRecent[r] && now - adRecent[r] < 4000); }
-    var idAd = foreign(s.id) || foreign(s.url);
+    // só conta como "de fora" se o player está TOCANDO ou carregando (1/3): um vídeo antigo parado/engatilhado não é anúncio
+    var idAd = (s.state === 1 || s.state === 3) && (foreign(s.id) || foreign(s.url));
     // parado sem o app ter pausado: não conta se acabou a faixa (0), se a aba está oculta ou se houve erro há pouco
     var stopped = !userPaused && s.state !== 1 && s.state !== 0 && !document.hidden && now - adErrAt > 6000;
     adStall = stopped ? adStall + 1 : 0;
-    var isAd = idAd || adStall >= 20;                 // 20 ticks = 2 s parado
+    var isAd = idAd || adStall >= ((s.state === -1 || s.state === 5) ? 50 : 20);   // 2 s parado (5 s se ainda nem começou: vídeo carregando ou início bloqueado)
+    if(now < adSnoozeUntil){ adHits = adClear = 0; return; }   // você fechou a janela: não reabre por um tempo
     if(isAd){ adHits++; adClear = 0; } else { adClear++; adHits = 0; }
     if(!adActive && adHits >= (idAd ? 3 : 1)) adSet(true, s);
     else if(adActive && adClear >= 3) adSet(false, s);
