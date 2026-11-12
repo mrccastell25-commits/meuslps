@@ -245,8 +245,9 @@
   .hlcd1::after,.hlcd2::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:5px;background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0 1px,transparent 1px 3px)}
   .scene.off .hlcd1,.scene.off .hlcd2{background:#050806;box-shadow:inset 0 0 14px #000}
   .hlcd1{left:1202px;top:258px;width:254px;height:108px;padding-top:3px;box-sizing:border-box}
-  .lcdtag{display:block;height:14.5px;line-height:14.5px;padding:0 11px;box-sizing:border-box;text-align:center;font-size:11px;font-weight:800;letter-spacing:3px;
-    color:#fff;text-shadow:none;background:linear-gradient(#e8382a,#b71f14);box-shadow:0 0 8px rgba(255,60,40,.55);pointer-events:none}
+  /* legenda da fonte: título no canto direito da 1ª linha — plano, sem brilho nem degradê, como uma legenda impressa/gravada do aparelho */
+  .lcdtag{display:flex;justify-content:flex-end;align-items:center;height:14.5px;padding:0 8px 0 0;box-sizing:border-box;pointer-events:none}
+  .lcdtag i{font-style:normal;font-size:9.5px;line-height:10px;font-weight:700;letter-spacing:1.5px;padding:0 5px;color:#fff;text-shadow:none;border:1px solid #d9352a;border-radius:0}
   .lcdl{display:grid;grid-template-columns:30px 1fr;align-items:center;width:100%;height:14.5px;padding:0 14px 0 11px;border:0;background:transparent;color:inherit;font:inherit;font-size:12px;text-align:left;text-shadow:inherit;white-space:nowrap;cursor:pointer}
   .lcdl .lt{overflow:hidden;text-overflow:ellipsis}
   .lcdl:hover{background:rgba(109,255,154,.16)}
@@ -2453,7 +2454,7 @@
   function hLcdRender(){
     var a = PA(); if(!a) return;
     var dm = dmode(), isTape = dm === 'tape', rows, cur, i, html = '';
-    var tag = '<span class="lcdtag">' + (dm === 'radio' ? 'RÁDIO' : isTape ? 'FITA' : 'DISCO') + '</span>';   // 1ª linha: qual fonte está no display
+    var tag = '<span class="lcdtag"><i>' + (dm === 'radio' ? 'RÁDIO' : isTape ? 'FITA' : 'DISCO') + '</i></span>';   // 1ª linha: qual fonte está no display
     if(dm === 'radio'){
       if(!radio.list.length){
         hLcd1.innerHTML = tag + '<span class="lcdmsg">' + (radio.loading ? 'BUSCANDO RÁDIOS…' : 'SEM RÁDIOS') + '</span><span class="lcdmsg">Rio Grande do Sul</span>';
