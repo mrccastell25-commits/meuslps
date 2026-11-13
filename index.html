@@ -289,6 +289,7 @@
     background:linear-gradient(#2d241d,#14100d);box-shadow:0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
   .hnav[disabled]{opacity:.4}
   .hhot[hidden]{display:none!important}
+  .hnav.hsm{font-size:13px;letter-spacing:0}
   .hnav.hmix{color:#eafff1;font-weight:800;border-color:#7dffb0;background:linear-gradient(#21503a,#0d2a1d);
     box-shadow:0 0 12px rgba(125,255,176,.6),0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.22)}
   .hnav.herase{color:#ffe9e5;font-weight:800;border-color:#ff7a66;background:linear-gradient(#5e2219,#2a0f0b);
@@ -1448,6 +1449,7 @@
   };
   if(window.YT && window.YT.Player) apiReady = true;
   function makePlayer(id){
+    adLoadAt = performance.now(); adStarted = false;     // carregando o primeiro vídeo (em 3G demora): não é comercial
     var pv = {autoplay:1, controls:0, disablekb:1, fs:0, playsinline:1, rel:0};
     if(/^https?:/.test(location.protocol)) pv.origin = location.origin;
     player = new YT.Player('ytPlayer', {
@@ -1603,7 +1605,7 @@
 
   /* ---------- volume (controla o player do YouTube de verdade) ---------- */
   var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
-  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0;   // comercial do YouTube (ver adWatch)
+  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0, adLoadAt = 0, adStarted = false;   // comercial do YouTube (ver adWatch)
   var AD_SHOW_PLAYER = true;   // true: mostra o player durante o comercial para você poder tocar em "Pular anúncio"
   try{ var sv = localStorage.getItem('gaveta:vol'); if(sv !== null && !isNaN(+sv)) volume = clamp(+sv, 0, 100); }catch(e){}
   function paintVolume(){
@@ -2068,6 +2070,9 @@
     tape = {segs: picks.map(function(x){ return {vid: x.id, title: x.title, artist: x.artist, album: x.album, start: 0, dur: QUICK_EST, est: true}; }), pos: 0};
     deck = 'stop'; shuttle = 0; tapeIdx = -1; lcdSig = ''; tapeSave();
     if(!powered){ note('Fita rápida pronta (' + picks.length + ' faixas). Ligue o aparelho e aperte play.'); return; }
+    if(mode !== 'tape' && !isPortrait()){      // desktop: a chave SOURCE só muda pela mão do usuário, e o que está tocando continua
+      note('Fita rápida montada (' + picks.length + ' faixas). Vire a chave SOURCE para fita e aperte PLAY.'); return;
+    }
     ensureAudio();
     if(mode !== 'tape' && setSource('tape') === false) return;
     playTapeAt(0);
@@ -2327,6 +2332,7 @@
       var other = x[0] === 'cueVideoById' || x[0] === 'loadVideoById';
       player[x[0]] = function(){
         userPaused = x[1];
+        if(other){ adLoadAt = performance.now(); adStarted = false; }
         if(other){   // troca de disco/faixa/fita: o vídeo que está no player agora não é "de fora" e a janela do aviso (se estava aberta) sai
           try{ var vd = player.getVideoData && player.getVideoData(); if(vd && vd.video_id) adRecent[vd.video_id] = performance.now(); }catch(e){}
           if(adActive) adSet(false, null, true);
@@ -2365,6 +2371,7 @@
     note(on ? (waiting ? 'O player não começou sozinho. Toque no play dele (ou no ✕ para fechar).' : 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio.' : '')) : 'Fim do comercial. Som de volta.');
   }
   $('adClose').addEventListener('click', function(){ adSnoozeUntil = performance.now() + 20000; adSet(false, null, true); note('Player fechado.'); });
+  function adSlowNet(){ try{ var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection; return !!c && (!!c.saveData || /(2g|3g)$/.test(c.effectiveType || '')); }catch(e){ return false; } }
   function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
     var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
     if(!ok){ if(adActive) adSet(false); adHits = adClear = adStall = 0; return; }
@@ -2373,11 +2380,15 @@
     // id "de fora" = não é o esperado nem um que acabou de ser o esperado (troca de faixa ainda carregando)
     function foreign(r){ return !!r && r !== exp && !(adRecent[r] && now - adRecent[r] < 4000); }
     // só conta como "de fora" se o player está TOCANDO ou carregando (1/3): um vídeo antigo parado/engatilhado não é anúncio
-    var idAd = (s.state === 1 || s.state === 3) && (foreign(s.id) || foreign(s.url));
+    if(s.state === 1 && (!s.id || s.id === exp)) adStarted = true;           // o vídeo certo já começou a tocar
+    var slow = adSlowNet(), loading = !adStarted && now - adLoadAt < (slow ? 45000 : 15000);   // ainda carregando (rede lenta pode levar dezenas de segundos)
+    var idAd = s.state === 1 && (foreign(s.id) || foreign(s.url));         // anúncio de verdade TOCA (1) com outro id; carregando (3) não conta
     // parado sem o app ter pausado: não conta se acabou a faixa (0), se a aba está oculta ou se houve erro há pouco
-    var stopped = !userPaused && s.state !== 1 && s.state !== 0 && !document.hidden && now - adErrAt > 6000;
+    var stopped = !userPaused && !loading && s.state !== 1 && s.state !== 0 && !document.hidden && now - adErrAt > 6000;
     adStall = stopped ? adStall + 1 : 0;
-    var isAd = idAd || adStall >= ((s.state === -1 || s.state === 5) ? 50 : 20);   // 2 s parado (5 s se ainda nem começou: vídeo carregando ou início bloqueado)
+    // parado: 2 s se pausado; 5 s se nem começou (início bloqueado); 10 s (30 s em rede lenta) se só está carregando/bufferizando
+    var need = (s.state === -1 || s.state === 5) ? 50 : (s.state === 3 ? (slow ? 300 : 100) : 20);
+    var isAd = idAd || adStall >= need;
     if(now < adSnoozeUntil){ adHits = adClear = 0; return; }   // você fechou a janela: não reabre por um tempo
     if(isAd){ adHits++; adClear = 0; } else { adClear++; adHits = 0; }
     if(!adActive && adHits >= (idAd ? 3 : 1)) adSet(true, s);
@@ -2504,7 +2515,7 @@
   function hifiRefresh(){
     if(!hHot.hPower) return;
     var dmx = dmode();                        // desktop: no modo fita, criar/apagar ocupam o lugar do "Abrir no YouTube Music"; no rádio ele não faz sentido
-    if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix){ tapeUiOn = dmx; hHot.hMix.hidden = dmx !== 'tape'; hHot.hErase.hidden = dmx !== 'tape'; hHot.hOpen.hidden = dmx !== 'lp'; }
+    if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix && hHot.hRaf){ tapeUiOn = dmx; hHot.hMix.hidden = dmx !== 'tape'; hHot.hErase.hidden = dmx !== 'tape'; hHot.hOpen.hidden = true; hHot.hRaf.hidden = dmx !== 'lp'; hHot.hMont.hidden = dmx !== 'lp'; }
     if(hHot.hErase) hHot.hErase.disabled = !tape.segs.length;
     rndLights();
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
@@ -2864,6 +2875,11 @@
   hot('hMix', 'Criar fita', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
   hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
   hHot.hMix.classList.add('hmix'); hHot.hErase.classList.add('herase');
+  /* no modo disco (desktop), o lugar do "Abrir no YouTube Music" é de dois atalhos: sortear um disco e montar uma fita rápida */
+  hot('hRaf', 'Sortear disco', 704, 803, 104, 38, 'rect hnav', function(){ raffle(); }).title = 'Sorteia um disco de qualquer gaveta e já toca';
+  hot('hMont', 'Montar fita', 814, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas (o disco continua tocando)';
+  hHot.hRaf.classList.add('hsm'); hHot.hMont.classList.add('hsm', 'hmix');
+  hHot.hOpen.hidden = true; hHot.hRaf.hidden = true; hHot.hMont.hidden = true;
   hHot.hMix.hidden = true; hHot.hErase.hidden = true;
 
   hLcd1.addEventListener('click', function(e){
