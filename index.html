@@ -1443,8 +1443,11 @@
   function PA(){ return pa || albums[curAlbum] || EMPTY_ALBUM; }
   function sameAlbum(x, y){ return !!x && !!y && x.title === y.title && x.tracks.length === y.tracks.length && x.tracks[0].id === y.tracks[0].id; }
 
+  /* um pedido ao player (pendingId) só vale se a fonte continua a mesma: disco = texto (modo disco), trecho de fita = objeto (modo fita) */
+  function pendingValid(){ return powered && !!pendingId && (typeof pendingId === 'string' ? mode === 'lp' : mode === 'tape'); }
   window.onYouTubeIframeAPIReady = function(){
     apiReady = true;
+    if(pendingId && !pendingValid()) pendingId = null;      // trocou de fonte enquanto a API carregava
     if(pendingId && opened && modal === 'detail'){ var id = pendingId; if(typeof id === 'string'){ pendingId = null; makePlayer(id); } else makePlayer(id.videoId); }   // objeto = trecho da fita: o onReady carrega
   };
   if(window.YT && window.YT.Player) apiReady = true;
@@ -1457,6 +1460,8 @@
       events:{
         onReady:function(e){
           playerReady = true; adHook(); applyVolume();
+          var mine = pendingId ? pendingValid() : (mode === 'lp' && powered);
+          if(!mine){ pendingId = null; try{ e.target.pauseVideo(); }catch(_){} return; }   // a fonte mudou enquanto o player carregava (3G): não toca por cima do rádio/da fita
           if(pendingId){ e.target.loadVideoById(pendingId); pendingId = null; }
           else { try{ e.target.playVideo(); }catch(_){} }
         },
@@ -1470,11 +1475,15 @@
   }
   function onState(e){
     var s = e.data;
+    if(s === 1 && (mode === 'radio' || !powered)){     // rede de segurança: o YouTube nunca toca com o rádio ligado ou o aparelho desligado
+      try{ (e.target || player).pauseVideo(); }catch(_){} ytPlay = false; return;
+    }
     ytPlay = (s === 1);
     if(s === 1){ detail.classList.add('playing'); startProgress(); applyVolume(); }
     else if(s === 2){ detail.classList.remove('playing'); }
     else if(s === 0){
       detail.classList.remove('playing');
+      if(mode === 'radio') return;               // fim de faixa com o rádio ligado: não sequestra o rádio
       if(mode === 'tape'){ if(Date.now() - lastAdv > 900) tapeAdvance(); return; }
       var a = PA();
       if(curTrack < a.tracks.length - 1) playTrack(curTrack + 1);
@@ -2228,7 +2237,8 @@
   function radioStep(dir){ radio.dir = dir; if(!radio.loaded){ radio.wantPlay = true; radioLoad(); return; } radioTune(radio.idx + dir); }
   function radioVol(){ try{ radioEl.volume = muted ? 0 : clamp(volume / 100, 0, 1); }catch(e){} }
   radioEl.addEventListener('playing', function(){
-    if(mode !== 'radio' || radio.stopping) return;
+    if(mode !== 'radio'){ try{ radioEl.pause(); }catch(e){} return; }   // rede de segurança: o rádio nunca toca fora do modo rádio
+    if(radio.stopping) return;
     radio.state = 'playing'; radio.t0 = performance.now(); radio.fails = 0;
     detail.classList.add('playing'); radioVol();
   });
