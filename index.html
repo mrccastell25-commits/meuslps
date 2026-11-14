@@ -102,6 +102,8 @@
     opacity:0;transition:opacity .3s;color:#eef3f1;
     padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px))}
   .detail[hidden]{display:none}
+  .detail.flying #mCov{visibility:hidden}   /* celular: a capa real só aparece quando o disco que voa chega */
+  .flycov{border-radius:2px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
   .detail.open{opacity:1}
   .detail-inner{margin:auto;display:flex;flex-direction:column;align-items:center;gap:20px;width:min(100%,780px)}
   .sleeve-wrap{position:relative;flex:none;width:var(--D);height:calc(var(--D)*1.38)}
@@ -1574,7 +1576,51 @@
   }
   function albumStep(d){ if(navLock) return; var n = curAlbum + d; if(n >= 0 && n < N) showAlbum(n, true); }
   function mobTop(){ var mb = $('mbody'); if(mb) mb.scrollTop = 0; }   // celular: a tela do disco sempre começa com a capa e o nome no topo
+  /* ---------- celular: transição gaveta -> tela do disco ----------
+     Fase 1 (FLY_FADE): o fundo vira a tela do disco (fade do painel) com o disco grande parado por cima, igual estava na gaveta.
+     Fase 2 (FLY_MOVE): o disco diminui, desfaz a inclinação e vai para o seu lugar (a capa do cartão "tocando agora"). */
+  var FLY_FADE = 300, FLY_MOVE = 460, flyTok = null;
+  function flyCancel(){
+    var g = flyTok; flyTok = null;
+    if(g){ try{ (g.getAnimations ? g.getAnimations() : []).forEach(function(a){ a.cancel(); }); }catch(e){} if(g.parentNode) g.parentNode.removeChild(g); }
+    detail.classList.remove('flying');
+  }
+  function flyStart(i){            // cópia do disco em foco, no mesmo lugar e com a mesma inclinação que ele tem na gaveta
+    var el = recs[i], sr = stack.getBoundingClientRect();
+    if(!el || !sr.width) return null;
+    var g = el.cloneNode(true);
+    g.removeAttribute('id'); g.className = 'rec flycov';
+    g.style.cssText = 'position:fixed;left:' + sr.left + 'px;top:' + sr.top + 'px;width:' + sr.width + 'px;height:' + sr.height + 'px;bottom:auto;margin:0;z-index:55;pointer-events:none;display:block;opacity:1;'
+      + 'transform:' + el.style.transform + ';transform-origin:50% 100%';
+    document.body.appendChild(g);
+    g._f = {left: sr.left, top: sr.top, w: sr.width, h: sr.height, tf: el.style.transform || 'none'};
+    return g;
+  }
+  function flyRun(g){
+    var mc = $('mCov');
+    if(!mc || !g.animate){ if(g.parentNode) g.parentNode.removeChild(g); return; }
+    flyTok = g; detail.classList.add('flying');
+    var landed = false;
+    function land(){
+      if(landed) return; landed = true;
+      if(flyTok === g){ flyTok = null; detail.classList.remove('flying'); }
+      g.style.transition = 'opacity .16s'; g.style.opacity = '0';
+      setTimeout(function(){ if(g.parentNode) g.parentNode.removeChild(g); }, 200);
+    }
+    setTimeout(function(){
+      if(flyTok !== g) return;                                   // cancelado (voltou à gaveta, trocou de disco…)
+      var d = mc.getBoundingClientRect(), f = g._f;
+      if(!d.width){ land(); return; }
+      var an = g.animate([
+        {left: f.left + 'px', top: f.top + 'px', width: f.w + 'px', height: f.h + 'px', transform: f.tf, borderRadius: '2px'},
+        {left: d.left + 'px', top: d.top + 'px', width: d.width + 'px', height: d.height + 'px', transform: 'translateY(0px) perspective(1000px) rotateX(0deg) scale(1)', borderRadius: '8px'}
+      ], {duration: FLY_MOVE, easing: 'cubic-bezier(.22,.8,.22,1)', fill: 'forwards'});
+      an.onfinish = land;
+    }, FLY_FADE + 50);    // o fade só começa ~2 quadros depois: garante que o fundo já virou a tela do disco antes do disco encolher
+  }
   function openDetail(i, rndTrack){
+    flyCancel();
+    var fly = (isPortrait() && !reduceMotion && detail.hidden && curDrawer >= 0 && !stage.hidden && recs[i] && recs[i]._v) ? flyStart(i) : null;   // só quando vem da gaveta, no celular
     var same = !rndTrack && bgActive && sameAlbum(albums[i], pa);   // o mesmo disco já está tocando: só volta ao toca-discos
     bgActive = false; paintMini();
     opened = true; modal = 'detail'; lastFocus = document.activeElement; hideHint();
@@ -1585,10 +1631,12 @@
     detail.hidden = false;
     mobTop();
     requestAnimationFrame(function(){ mobTop(); requestAnimationFrame(function(){ mobTop(); detail.classList.add('open'); }); });
+    if(fly) flyRun(fly);
     requestAnimationFrame(startViz);
     $('dClose').focus({preventScroll:true});
   }
   function closeDetail(){
+    flyCancel();
     detail.classList.remove('open', 'playing');
     bgActive = false; paintMini();
     stopDeck();
@@ -2947,6 +2995,7 @@
   }
   function minimizeDetail(){
     if(!opened || modal !== 'detail') return;
+    flyCancel();
     bgActive = true;
     detail.classList.remove('open'); stopViz();
     setTimeout(function(){
