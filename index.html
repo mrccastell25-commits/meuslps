@@ -104,6 +104,8 @@
   .detail[hidden]{display:none}
   .detail.flying #mCov{visibility:hidden}   /* celular: a capa real só aparece quando o disco que voa chega */
   .flycov{border-radius:2px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+  .detail.flyd .hcclip{opacity:0!important;transition:none!important}   /* desktop: a capa real só aparece quando o disco que voa chega */
+  .detail.dfade{transition:opacity .65s ease}                            /* desktop: as imagens se fundem no ritmo do voo */
   .detail.open{opacity:1}
   .detail-inner{margin:auto;display:flex;flex-direction:column;align-items:center;gap:20px;width:min(100%,780px)}
   .sleeve-wrap{position:relative;flex:none;width:var(--D);height:calc(var(--D)*1.38)}
@@ -1581,6 +1583,7 @@
      Fase 2 (FLY_MOVE): o disco diminui, desfaz a inclinação e vai para o seu lugar (a capa do cartão "tocando agora"). */
   var FLY_FADE = 300, FLY_MOVE = 460, flyTok = null;
   function flyCancel(){
+    if(typeof flyD !== 'undefined' && flyD){ var f = flyD; flyD = null; try{ cancelAnimationFrame(f.raf); }catch(e){} [f.a, f.b].forEach(function(n){ if(n && n.parentNode) n.parentNode.removeChild(n); }); detail.classList.remove('flyd', 'dfade'); }
     var g = flyTok; flyTok = null;
     if(g){ try{ (g.getAnimations ? g.getAnimations() : []).forEach(function(a){ a.cancel(); }); }catch(e){} if(g.parentNode) g.parentNode.removeChild(g); }
     detail.classList.remove('flying');
@@ -1618,9 +1621,64 @@
       an.onfinish = land;
     }, FLY_FADE + 50);    // o fade só começa ~2 quadros depois: garante que o fundo já virou a tela do disco antes do disco encolher
   }
+  /* ---------- desktop: o disco da gaveta se transforma na capa ao lado do toca-discos ----------
+     Os 4 cantos do disco (como a gaveta o desenha, em perspectiva) caminham até os 4 cantos da capa do estojo na cena,
+     enquanto o fundo se funde com a tela do aparelho. A cópia quadrada (A) se mistura com a cópia da capa alta (B) no caminho. */
+  var FLYD_MS = 650, flyD = null, flyLast = null;
+  function projQuad(el, sr){       // cantos do disco na tela: translateY · perspective · rotateX · scale em torno de 50% 100%
+    var m = /translateY\(([-\d.]+)px\)\s*perspective\(([\d.]+)px\)\s*rotateX\(([-\d.]+)deg\)\s*scale\(([-\d.]+)\)/.exec(el.style.transform || '');
+    var ty = m ? +m[1] : 0, P = m ? +m[2] : 1000, rx = m ? +m[3] * Math.PI / 180 : 0, sc = m ? +m[4] : 1;
+    var W = sr.width, H = sr.height, ox = W / 2, oy = H, cs = Math.cos(rx), sn = Math.sin(rx);
+    return [[0, 0], [W, 0], [W, H], [0, H]].map(function(p){
+      var x = (p[0] - ox) * sc, y = (p[1] - oy) * sc, w = 1 - (y * sn) / P;
+      return [sr.left + ox + x / w, sr.top + oy + (y * cs) / w + ty];
+    });
+  }
+  function flyDeskStart(i){
+    var el = recs[i], sr = stack.getBoundingClientRect();
+    if(!el || !sr.width) return null;
+    var q0 = projQuad(el, sr), a = el.cloneNode(true);
+    a.removeAttribute('id'); a.className = 'rec flycov';
+    a.style.cssText = 'position:fixed;left:0;top:0;bottom:auto;margin:0;width:' + sr.width + 'px;height:' + sr.height + 'px;z-index:55;pointer-events:none;display:block;opacity:1;'
+      + 'transform-origin:0 0;transform:' + homog(sr.width, sr.height, q0);
+    document.body.appendChild(a);
+    return {a: a, b: null, w: sr.width, h: sr.height, q0: q0, raf: 0};
+  }
+  function flyDeskLand(f){
+    if(flyD === f) flyD = null;
+    var hc = scene.querySelector('.hcclip');
+    if(hc) hc.style.transition = 'none';                       // a capa real aparece de uma vez, sem novo fade
+    detail.classList.remove('flyd', 'dfade');
+    if(hc){ void hc.offsetWidth; hc.style.transition = ''; }
+    [f.a, f.b].forEach(function(n){ if(n && n.parentNode) n.parentNode.removeChild(n); });
+  }
+  function flyDeskRun(f){
+    flyD = f; detail.classList.add('flyd', 'dfade');
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      if(flyD !== f) return;
+      var sc = scene.getBoundingClientRect(), k = sc.width / HW;
+      var q1 = HCOVER_Q.map(function(p){ return [sc.left + p[0] * k, sc.top + p[1] * k]; });
+      var b = hCover.cloneNode(true); b.removeAttribute('id'); if(b.firstElementChild) b.firstElementChild.removeAttribute('id');
+      b.className = 'hcover'; b.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:640px;z-index:55;pointer-events:none;opacity:0;transform-origin:0 0;transform:' + homog(300, 640, f.q0);
+      document.body.appendChild(b); f.b = b;
+      var t0 = performance.now();
+      (function frame(now){
+        if(flyD !== f) return;
+        var t = clamp(((now || performance.now()) - t0) / FLYD_MS, 0, 1), e = t * t * (3 - 2 * t);
+        var q = f.q0.map(function(p, n){ return [p[0] + (q1[n][0] - p[0]) * e, p[1] + (q1[n][1] - p[1]) * e]; });
+        var m = clamp((t - 0.3) / 0.55, 0, 1);                  // entre 30% e 85% do caminho a capa quadrada vira a capa alta do estojo
+        f.a.style.transform = homog(f.w, f.h, q); b.style.transform = homog(300, 640, q);
+        b.style.opacity = m.toFixed(3); f.a.style.opacity = (1 - m).toFixed(3);
+        flyLast = {q: q, t: t};
+        if(t < 1) f.raf = requestAnimationFrame(frame); else flyDeskLand(f);
+      })();
+    }); });
+  }
   function openDetail(i, rndTrack){
     flyCancel();
-    var fly = (isPortrait() && !reduceMotion && detail.hidden && curDrawer >= 0 && !stage.hidden && recs[i] && recs[i]._v) ? flyStart(i) : null;   // só quando vem da gaveta, no celular
+    var fromDrawer = !reduceMotion && detail.hidden && curDrawer >= 0 && !stage.hidden && recs[i] && recs[i]._v;   // só quando vem da gaveta
+    var fly = (fromDrawer && isPortrait()) ? flyStart(i) : null;           // celular: fade + disco que encolhe até o cartão
+    var dfly = (fromDrawer && !isPortrait()) ? flyDeskStart(i) : null;     // desktop: disco que vira a capa ao lado do toca-discos
     var same = !rndTrack && bgActive && sameAlbum(albums[i], pa);   // o mesmo disco já está tocando: só volta ao toca-discos
     bgActive = false; paintMini();
     opened = true; modal = 'detail'; lastFocus = document.activeElement; hideHint();
@@ -1632,6 +1690,7 @@
     mobTop();
     requestAnimationFrame(function(){ mobTop(); requestAnimationFrame(function(){ mobTop(); detail.classList.add('open'); }); });
     if(fly) flyRun(fly);
+    if(dfly) flyDeskRun(dfly);
     requestAnimationFrame(startViz);
     $('dClose').focus({preventScroll:true});
   }
@@ -1863,7 +1922,8 @@
     for(i = 7; i >= 0; i--){ var v = b[i]; for(c = i + 1; c < 8; c++) v -= A[i][c]*s[c]; s[i] = v / A[i][i]; }
     return 'matrix3d(' + [s[0], s[3], 0, s[6], s[1], s[4], 0, s[7], 0, 0, 1, 0, s[2], s[5], 0, 1].join(',') + ')';
   }
-  hCover.style.transform = homog(300, 640, [[759,269],[968,252],[935,712],[726,664]]);
+  var HCOVER_Q = [[759,269],[968,252],[935,712],[726,664]];       // cantos (na cena) da capa em pé ao lado do toca-discos
+  hCover.style.transform = homog(300, 640, HCOVER_Q);
 
   var fitScene = function(){ var w = hfit.clientWidth; if(w) scene.style.transform = 'scale(' + (w/HW).toFixed(5) + ')'; };
   window.addEventListener('resize', function(){ fitScene(); });
