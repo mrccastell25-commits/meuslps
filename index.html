@@ -285,16 +285,11 @@
   .hhot:focus-visible{outline:2px solid #ffd58a;outline-offset:2px}
   .hhot[disabled]{cursor:default;pointer-events:none}
   .hhot.rlit{box-shadow:0 0 22px 6px rgba(255,225,170,.5)}   /* luz dos botões redondos: ver rndLights() */
-  .hnav{font:600 14.5px/33px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-align:center;color:#e9d3a2;border:1.5px solid #b8924f;border-radius:7px;letter-spacing:.3px;
+  .hnav{font:600 13.5px/33px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-align:center;color:#e9d3a2;border:1.5px solid #b8924f;border-radius:7px;letter-spacing:.2px;
     background:linear-gradient(#2d241d,#14100d);box-shadow:0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
   .hnav[disabled]{opacity:.4}
   .hhot[hidden]{display:none!important}
-  .hnav.hsm{font-size:13px;letter-spacing:0}
-  .hnav.hmix{color:#eafff1;font-weight:800;border-color:#7dffb0;background:linear-gradient(#21503a,#0d2a1d);
-    box-shadow:0 0 12px rgba(125,255,176,.6),0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.22)}
-  .hnav.herase{color:#ffe9e5;font-weight:800;border-color:#ff7a66;background:linear-gradient(#5e2219,#2a0f0b);
-    box-shadow:0 0 12px rgba(255,110,90,.5),0 3px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18)}
-  .hnav.hmix:not([disabled]):hover,.hnav.herase:not([disabled]):hover{filter:brightness(1.18)}
+
 
   /* chaves (alavanca da foto espelhada = para cima) e LEDs */
   .htog{border-radius:5px}
@@ -501,6 +496,8 @@
     background:linear-gradient(#4a3828,#2a1d12 55%,#1c130b);box-shadow:0 3px 0 #0e0905,inset 0 1px 0 rgba(255,235,190,.3)}
   .mbtn2:active{transform:translateY(3px);box-shadow:none}
   .mbtn2.wide{display:block;width:100%;margin:12px 0 4px}
+  .mbtnrow{display:flex;gap:10px;margin:12px 0 4px}
+  .mbtnrow .mbtn2{flex:1 1 0;min-width:0;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mst{display:grid;gap:4px;text-align:center}
   .mst b{font:700 20px/1.2 'Bricolage Grotesque',system-ui,sans-serif;color:#fff1cf}
   .mst span{font:400 12px 'Special Elite',ui-monospace,monospace;color:#6bc7ff;letter-spacing:.06em}
@@ -916,8 +913,10 @@
       <p class="mhelp">Para gravar: toque um disco, vá à tela Tape Deck e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
       <h3 class="mh">MINHA FITA</h3>
       <ul class="mlist" id="mTapeList"></ul>
-      <button class="mbtn2 wide" id="mtMix" type="button">♪ Criar fita rápida (faixas sorteadas)</button>
-      <button class="mbtn2 wide" id="mtErase" type="button">Apagar fita</button>
+      <div class="mbtnrow">
+        <button class="mbtn2" id="mtMix" type="button">Criar fita rápida</button>
+        <button class="mbtn2" id="mtErase" type="button">Apagar fita</button>
+      </div>
     </section>
 
     <section class="msc" id="mbRadio" aria-label="Rádio" hidden>
@@ -2521,11 +2520,20 @@
   function hifiTime(c, d){ lpCur = c; lpDur = d; hifiRefresh(); }
 
   var lastTxt = {t: null, c: null, d: null, f: null, led: null};
+  /* fileira de baixo do aparelho (desktop): só os botões que fazem sentido em cada fonte, todos do mesmo tamanho dividindo o espaço (44…918 px) */
+  var NAV_ALL = ['hPrevA', 'hNextA', 'hBack', 'hShop', 'hRaf', 'hMont', 'hMix', 'hErase'];
+  var NAV_SETS = {lp: ['hPrevA', 'hNextA', 'hBack', 'hShop', 'hRaf', 'hMont'], tape: ['hBack', 'hShop', 'hMix', 'hErase'], radio: ['hBack', 'hShop']};
+  function navLayout(dm){
+    var set = NAV_SETS[dm] || NAV_SETS.lp, X0 = 44, X1 = 918, GAP = 10, n = set.length;
+    var w = Math.min(214, Math.floor((X1 - X0 - (n - 1) * GAP) / n));
+    NAV_ALL.forEach(function(id){ if(hHot[id]) hHot[id].hidden = set.indexOf(id) < 0; });
+    set.forEach(function(id, i){ var e = hHot[id]; if(e){ e.style.left = (X0 + i * (w + GAP)) + 'px'; e.style.width = w + 'px'; } });
+  }
   var tapeUiOn = null;
   function hifiRefresh(){
     if(!hHot.hPower) return;
     var dmx = dmode();                        // desktop: no modo fita, criar/apagar ocupam o lugar do "Abrir no YouTube Music"; no rádio ele não faz sentido
-    if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix && hHot.hRaf){ tapeUiOn = dmx; hHot.hMix.hidden = dmx !== 'tape'; hHot.hErase.hidden = dmx !== 'tape'; hHot.hOpen.hidden = true; hHot.hRaf.hidden = dmx !== 'lp'; hHot.hMont.hidden = dmx !== 'lp'; }
+    if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix && hHot.hRaf){ tapeUiOn = dmx; hHot.hOpen.hidden = true; navLayout(dmx); }
     if(hHot.hErase) hHot.hErase.disabled = !tape.segs.length;
     rndLights();
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
@@ -2882,13 +2890,11 @@
   hot('hOpen', 'Abrir no YouTube Music', 704, 803, 214, 38, 'rect hnav', null, 'a');
   hHot.hOpen.target = '_blank'; hHot.hOpen.rel = 'noopener';
   /* no modo fita, estes dois ocupam o lugar do "Abrir no YouTube Music" (a alternância está no hifiRefresh) */
-  hot('hMix', 'Criar fita', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
+  hot('hMix', 'Criar fita rápida', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
   hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
-  hHot.hMix.classList.add('hmix'); hHot.hErase.classList.add('herase');
   /* no modo disco (desktop), o lugar do "Abrir no YouTube Music" é de dois atalhos: sortear um disco e montar uma fita rápida */
   hot('hRaf', 'Sortear disco', 704, 803, 104, 38, 'rect hnav', function(){ raffle(); }).title = 'Sorteia um disco de qualquer gaveta e já toca';
   hot('hMont', 'Montar fita', 814, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas (o disco continua tocando)';
-  hHot.hRaf.classList.add('hsm'); hHot.hMont.classList.add('hsm', 'hmix');
   hHot.hOpen.hidden = true; hHot.hRaf.hidden = true; hHot.hMont.hidden = true;
   hHot.hMix.hidden = true; hHot.hErase.hidden = true;
 
