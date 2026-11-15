@@ -232,8 +232,6 @@
   #hArt{position:absolute;inset:0}
   .hcover::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset -3px 0 0 rgba(255,255,255,.3)}
   .hcbg{position:absolute;inset:-40px;filter:blur(18px) saturate(1.1) brightness(.55)}
-  .hcover::before{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(var(--ext,0px) - 6px);z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.72),rgba(0,0,0,0))}   /* sombra entre o estojo e o gabinete: 0 na emenda com a arte, mais escura rumo ao gabinete */
-  .hcsq.hcmir{left:-318px;transform:scaleX(-1);filter:blur(3px)}   /* faixa estendida: reflexo da arte (igual à arte na emenda; quem escurece é a sombra acima) */
   .hcsq{position:absolute;left:-6px;top:0;width:312px;height:640px}
   .hcbg svg,.hcsq svg{position:absolute;inset:0;display:block;width:100%;height:100%}
   .hgloss{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.38)),linear-gradient(100deg,rgba(255,255,255,.26),rgba(255,255,255,0) 32%,rgba(255,255,255,0) 68%,rgba(255,255,255,.12)),linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 20%,rgba(0,0,0,0) 80%,rgba(0,0,0,.25))}
@@ -1661,8 +1659,7 @@
       var sc = scene.getBoundingClientRect(), k = sc.width / HW;
       var q1 = HCOVER_Q.map(function(p){ return [sc.left + p[0] * k, sc.top + p[1] * k]; });
       var b = hCover.cloneNode(true); b.removeAttribute('id'); if(b.firstElementChild) b.firstElementChild.removeAttribute('id');
-      b.className = 'hcover'; b.style.cssText = 'position:fixed;left:0;top:0;width:' + HCOV_W + 'px;height:640px;z-index:55;pointer-events:none;opacity:0;transform-origin:0 0;transform:' + homog(HCOV_W, 640, f.q0);
-      b.style.setProperty('--ext', HCOV_EXT + 'px');
+      b.className = 'hcover'; b.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:640px;z-index:55;pointer-events:none;opacity:0;transform-origin:0 0;transform:' + homog(300, 640, f.q0);
       document.body.appendChild(b); f.b = b;
       var t0 = performance.now();
       (function frame(now){
@@ -1670,7 +1667,7 @@
         var t = clamp(((now || performance.now()) - t0) / FLYD_MS, 0, 1), e = t * t * (3 - 2 * t);
         var q = f.q0.map(function(p, n){ return [p[0] + (q1[n][0] - p[0]) * e, p[1] + (q1[n][1] - p[1]) * e]; });
         var m = clamp((t - 0.3) / 0.55, 0, 1);                  // entre 30% e 85% do caminho a capa quadrada vira a capa alta do estojo
-        f.a.style.transform = homog(f.w, f.h, q); b.style.transform = homog(HCOV_W, 640, q);
+        f.a.style.transform = homog(f.w, f.h, q); b.style.transform = homog(300, 640, q);
         b.style.opacity = m.toFixed(3); f.a.style.opacity = (1 - m).toFixed(3);
         flyLast = {q: q, t: t};
         if(t < 1) f.raf = requestAnimationFrame(frame); else flyDeskLand(f);
@@ -1908,7 +1905,7 @@
   /* mapeia um retângulo w x h sobre um quadrilátero qualquer (perspectiva).
      O estojo da foto tem as linhas horizontais convergindo para um ponto à esquerda (y≈373): a borda de cima sobe para a direita,
      a de baixo desce (igual à base do suporte), e a lateral direita é mais alta que a esquerda. */
-  function homogS(w, h, q){        // coeficientes da homografia retângulo (0,0,w,h) -> quadrilátero q
+  function homog(w, h, q){
     var src = [[0,0],[w,0],[w,h],[0,h]], A = [], b = [], i, r, c;
     for(i = 0; i < 4; i++){
       var x = src[i][0], y = src[i][1], X = q[i][0], Y = q[i][1];
@@ -1923,27 +1920,10 @@
     }
     var s = new Array(8);
     for(i = 7; i >= 0; i--){ var v = b[i]; for(c = i + 1; c < 8; c++) v -= A[i][c]*s[c]; s[i] = v / A[i][i]; }
-    return s;
-  }
-  function hApply(s, x, y){ var d = s[6]*x + s[7]*y + 1; return [(s[0]*x + s[1]*y + s[2]) / d, (s[3]*x + s[4]*y + s[5]) / d]; }
-  function homog(w, h, q){
-    var s = homogS(w, h, q);
     return 'matrix3d(' + [s[0], s[3], 0, s[6], s[1], s[4], 0, s[7], 0, 0, 1, 0, s[2], s[5], 0, 1].join(',') + ')';
   }
-  /* Capa em pé ao lado do toca-discos. O plano da capa na foto (HCOVER_Q0) NÃO chega até o gabinete de madeira: entre a borda esquerda da capa e a moldura
-     sobrava uma cunha de fundo (~55 px no alto, fechando em y≈500). Para a capa "encostar" no gabinete, o mesmo plano (mesma perspectiva) é estendido
-     HCOV_EXT unidades para a esquerda; o trecho novo é um reflexo espelhado, escurecido e desfocado da própria arte (ver .hcmir), e o recorte passa a
-     seguir a borda direita da madeira (medida na foto) em vez da borda da capa. */
-  var HCOV_EXT = 130, HCOV_W = 300 + HCOV_EXT;
-  var HCOVER_Q0 = [[759,269],[968,252],[935,712],[726,664]];       // cantos (na cena) da capa original no estojo da foto
-  var HCOVER_S0 = homogS(300, 640, HCOVER_Q0);
-  var HCOVER_Q = [hApply(HCOVER_S0, -HCOV_EXT, 0), HCOVER_Q0[1], HCOVER_Q0[2], hApply(HCOVER_S0, -HCOV_EXT, 640)];   // plano estendido
-  hCover.style.width = HCOV_W + 'px'; hCover.style.setProperty('--ext', HCOV_EXT + 'px'); hArt.style.left = HCOV_EXT + 'px';
-  hCover.style.transform = homog(HCOV_W, 640, HCOVER_Q);
-  var HWOOD = [[773,551],[766,534],[761,522],[757,510],[754,498],[750,486],[741,462],[734,438],[725,406],[715,374],[707,350],[700,326],[700,322]];   // borda direita da madeira (cima) medida na foto
-  var HCLIP_YTOP = 322, HCLIP_XL = HCOVER_Q[0][0] + (HCLIP_YTOP - HCOVER_Q[0][1]) * (HCOVER_Q[3][0] - HCOVER_Q[0][0]) / (HCOVER_Q[3][1] - HCOVER_Q[0][1]);
-  var HCLIP = [HCOVER_Q[0], [968,252], [938,712], [900,706], [860,699], [817,692], [811,681], [804,661], [799,641], [791,611], [782,581]].concat(HWOOD, [[HCLIP_XL, HCLIP_YTOP]]);
-  (function(){ var hc = scene.querySelector('.hcclip'); if(hc) hc.style.clipPath = 'polygon(' + HCLIP.map(function(q){ return q[0].toFixed(1) + 'px ' + q[1].toFixed(1) + 'px'; }).join(',') + ')'; })();
+  var HCOVER_Q = [[759,269],[968,252],[935,712],[726,664]];       // cantos (na cena) da capa em pé ao lado do toca-discos
+  hCover.style.transform = homog(300, 640, HCOVER_Q);
 
   var fitScene = function(){ var w = hfit.clientWidth; if(w) scene.style.transform = 'scale(' + (w/HW).toFixed(5) + ')'; };
   window.addEventListener('resize', function(){ fitScene(); });
@@ -1966,7 +1946,7 @@
   /* capa do disco no estojo: a arte preenche toda a área do estojo (que é alta), como no modelo anterior */
   function hifiCover(a){
     var h = coverHTML(a);
-    hArt.innerHTML = '<div class="hcsq hcmir">' + h + '</div><div class="hcsq">' + h + '</div>';   // reflexo (preenche a faixa estendida) + arte
+    hArt.innerHTML = '<div class="hcsq">' + h + '</div>';
     var mcv = $('mCov'); if(mcv) mcv.innerHTML = h;
   }
   function hifiAlbum(a){
