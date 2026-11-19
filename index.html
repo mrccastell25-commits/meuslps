@@ -591,7 +591,8 @@
   .byeh{max-width:300px;margin:0;font:400 13px/1.5 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.65)}
 
   /* ===== controlador MIDI (só desktop) ===== */
-  .mnavf{outline:3px solid #ffd58a!important;outline-offset:2px;box-shadow:0 0 0 5px rgba(255,213,138,.28),0 0 16px 4px rgba(255,190,80,.55)!important;position:relative;z-index:2}
+  .mnavf{outline:3px solid #ffd58a!important;outline-offset:2px;box-shadow:0 0 0 5px rgba(255,213,138,.28),0 0 16px 4px rgba(255,190,80,.55)!important}
+  .drawer.mnavf{background:rgba(255,196,110,.26)!important;outline-offset:-3px}
   #midiBtn{display:none;position:relative}
   #midiBtn svg{width:22px;height:22px;display:block}
   #midiBtn::after{content:"";position:absolute;right:4px;top:4px;width:8px;height:8px;border-radius:50%;background:#4a3a2c;box-shadow:inset 0 1px 1px #000}
@@ -4240,19 +4241,17 @@
   function mNavFlip(){ return !mNavDialog() && !opened && curDrawer >= 0 && !stage.hidden && N > 0; }      // dentro da gaveta, folheando
   function mNavScope(){
     var dlg = mNavDialog(); if(dlg) return [dlg];
-    var inD = mNavInDetail();
-    return [document.querySelector('header.top'), inD ? $('detail') : $('shop'), inD ? null : $('mini')].filter(function(x){ return x && !x.hidden; });
+    var inD = mNavInDetail(), inDr = !inD && !opened && curDrawer >= 0;          // inDr = dentro da gaveta (a loja fica só de fundo)
+    return [document.querySelector('header.top'), inD ? $('detail') : (inDr ? null : $('shop')), inD ? null : $('mini')].filter(function(x){ return x && !x.hidden; });
   }
-  var M_SYS = '.hhot,.hknob,.hrdial,[role=slider],input[type=range],.ctl,.mk,.mkey,.mbtn,.mbtn2,.mtab';       // controles do aparelho
   function mNavItems(){
     var sel = 'button,a[href],select,input[type=checkbox],input[type=radio],[role=menuitem],[role=tab],[role=option],[tabindex]:not([tabindex="-1"])', out = [];
     var dlg = mNavDialog(), det = $('detail');
     mNavScope().forEach(function(root){
       [].slice.call(root.querySelectorAll(sel)).forEach(function(el){
         if(el.disabled || el.closest('[hidden],[inert]') || el.getClientRects().length === 0) return;
-        if(el.matches('.hhot,.hknob,.hrdial,[role=slider]')) return;
-        if(!dlg && det && det.contains(el) && el.matches(M_SYS) ) return;
-        if(!dlg && det && det.contains(el) && !el.matches('[role=menuitem],.mi,.adx')) return;   // no player: só menus
+        if(el.matches('.hhot:not(.hnav),.hknob,.hrdial,[role=slider]')) return;                   // controles de som/aparelho: já têm mapeamento próprio
+        if(!dlg && det && det.contains(el) && !el.matches('.hnav,[role=menuitem],.mi,.adx')) return;   // no player: só os menus
         var cs = getComputedStyle(el); if(cs.visibility === 'hidden' || cs.pointerEvents === 'none' || +cs.opacity === 0) return;
         var r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         if(cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight){          // coberto por outra camada (ex.: topo atrás do player)? não é alcançável
@@ -4300,10 +4299,18 @@
     if(d) midiNavStep(d > 0 ? 1 : -1);
   }
   function midiNavStep(dir){
-    if(mNavFlip()){                                  // gaveta aberta: o encoder folheia os discos (igual às setas do teclado)
+    if(mNavFlip()){                                  // gaveta aberta: discos → menus do topo → discos (anel)
       if(camBusy) return;
-      mNavMark(null); ensureAudio(); hideHint();
-      target = clamp(Math.round(target) + (dir > 0 ? 1 : -1), 0, N - 1); kick(); return;
+      var ml = mNavItems(), mi = mnav.el ? ml.indexOf(mnav.el) : -1;
+      if(mnav.el && mi < 0){ mNavMark(null); }                                            // o item sumiu: volta aos discos
+      if(!mnav.el){
+        var cur = clamp(Math.round(target), 0, N - 1), nx = cur + (dir > 0 ? 1 : -1);
+        if(nx >= 0 && nx <= N - 1 || !ml.length){ ensureAudio(); hideHint(); target = clamp(nx, 0, N - 1); kick(); return; }
+        mNavMark(ml[dir > 0 ? 0 : ml.length - 1]); playClick('ui'); return;               // passou do fim/início da lista: vai para os menus
+      }
+      mi += dir > 0 ? 1 : -1;
+      if(mi < 0 || mi >= ml.length){ mNavMark(null); ensureAudio(); target = mi < 0 ? N - 1 : 0; kick(); playClick('ui'); return; }   // saiu dos menus: volta aos discos
+      mNavMark(ml[mi]); playClick('ui'); return;
     }
     var list = mNavItems(); if(!list.length){ mToast('Não há itens de menu para navegar nesta tela.'); return; }
     var i = list.indexOf(mnav.el);
@@ -4313,7 +4320,7 @@
     mNavMark(list[i]); playClick('ui');
   }
   function midiNavClick(){
-    if(mNavFlip()){                                  // gaveta aberta: clique tira o disco que está na frente
+    if(mNavFlip() && !mnav.el){                      // gaveta aberta, folheando: clique tira o disco que está na frente
       if(camBusy) return;
       ensureAudio(); playClick('ui'); mNavMark(null); openDetail(clamp(Math.round(target), 0, N - 1)); return;
     }
