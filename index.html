@@ -1739,7 +1739,10 @@
     paintVolume();
     if(!player || !playerReady) return;
     // adActive: silencia só durante o comercial; o volume escolhido pelo usuário não é alterado
-    try{ player.setVolume(volume); if(muted || volume === 0 || adActive) player.mute(); else player.unMute(); }catch(e){}
+    try{
+      if(adActive){ player.setVolume(0); player.mute(); }              // comercial: volume 0 E mudo (nunca devolve o volume aqui)
+      else { player.setVolume(volume); if(muted || volume === 0) player.mute(); else player.unMute(); }
+    }catch(e){}
   }
   vol.addEventListener('input', function(){
     volume = +vol.value; if(volume > 0) muted = false;
@@ -2485,6 +2488,7 @@
     adActive = on; adHits = 0; adClear = 0; if(!on) adStall = 0;   // ligado: mantém o contador de "parado", senão acharia que o comercial acabou
     try{ console.info('[comercial]', on ? 'detectado' : 'terminou', sig ? JSON.stringify(sig) : ''); }catch(e){}
     detail.classList.toggle('ad', !!on);              // congela giro/animações enquanto dura o comercial
+    if(on) [120, 400, 900, 1800].forEach(function(ms){ setTimeout(function(){ if(adActive) applyVolume(); }, ms); });
     applyVolume();                                    // silencia / devolve o volume que estava
     if(AD_SHOW_PLAYER){
       var box = document.querySelector('.yt-hidden');
@@ -2499,6 +2503,7 @@
   function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
     var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
     if(!ok){ if(adActive) adSet(false); adHits = adClear = adStall = 0; return; }
+    if(adActive){ try{ player.mute(); player.setVolume(0); }catch(e){} }   // a cada 100 ms, sem confiar em isMuted()/getVolume() (o player de anúncio pode responder errado)
     var exp = adExpectedId(); if(!exp) return;
     var now = performance.now(), s = adSignals(); adRecent[exp] = now;
     // id "de fora" = não é o esperado nem um que acabou de ser o esperado (troca de faixa ainda carregando)
@@ -2518,7 +2523,6 @@
     if(!adActive && adHits >= (idAd ? 3 : 1)) adSet(true, s);
     else if(adActive && adClear >= 3) adSet(false, s);
     // depois do comercial o vídeo certo pode ficar parado: manda tocar
-    if(adActive){ try{ if(player.isMuted && !player.isMuted()) player.mute(); if(player.getVolume && player.getVolume() > 0) player.setVolume(0); }catch(e){} }   // garante o silêncio durante todo o comercial
     if(adActive && !idAd && s.state !== 1 && !document.hidden && now - adResumeAt > 2500){ adResumeAt = now; try{ player.playVideo(); }catch(e){} }
   }
 
