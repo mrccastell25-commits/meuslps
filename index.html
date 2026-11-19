@@ -4226,21 +4226,38 @@
   /* ---------- aprender (MIDI learn) ---------- */
 
   /* ---------- navegação nos menus da tela ativa (encoder infinito: giro + clique) ----------
-     escopo: janela aberta por cima (MIDI, catálogo, setup...) ou, sem janela, a barra do topo + loja/player + mini-player.
-     os botões do aparelho (.hhot) ficam de fora: já têm mapeamento próprio. */
-  var mnav = {el: null};
-  function mNavScope(){
+     • janela aberta por cima (MIDI, catálogo, setup...): só os itens dela.
+     • loja (gavetas): barra do topo + as gavetas + mini-player. Clicar numa gaveta abre-a.
+     • gaveta aberta: o giro FOLHEIA os discos e o clique TIRA o disco da gaveta (abre o player).
+     • player (disco tocando): só os menus do topo; os controles do aparelho (.hhot, knobs, dial, teclas) ficam de fora,
+       pois já têm mapeamento próprio. */
+  var mnav = {el: null, di: null};
+  function mNavDialog(){
     var dl = [].slice.call(document.querySelectorAll('[role="dialog"]')).filter(function(d){ return d.id !== 'detail' && !d.hidden && d.getClientRects().length; });
-    if(dl.length) return [dl[dl.length - 1]];
-    var d = $('detail'), onDetail = d && !d.hidden;
-    return [document.querySelector('header.top'), onDetail ? d : $('shop'), $('mini')].filter(function(x){ return x && !x.hidden; });
+    return dl.length ? dl[dl.length - 1] : null;
   }
+  function mNavInDetail(){ var d = $('detail'); return !!(d && !d.hidden); }
+  function mNavFlip(){ return !mNavDialog() && !opened && curDrawer >= 0 && !stage.hidden && N > 0; }      // dentro da gaveta, folheando
+  function mNavScope(){
+    var dlg = mNavDialog(); if(dlg) return [dlg];
+    var inD = mNavInDetail();
+    return [document.querySelector('header.top'), inD ? $('detail') : $('shop'), inD ? null : $('mini')].filter(function(x){ return x && !x.hidden; });
+  }
+  var M_SYS = '.hhot,.hknob,.hrdial,[role=slider],input[type=range],.ctl,.mk,.mkey,.mbtn,.mbtn2,.mtab';       // controles do aparelho
   function mNavItems(){
     var sel = 'button,a[href],select,input[type=checkbox],input[type=radio],[role=menuitem],[role=tab],[role=option],[tabindex]:not([tabindex="-1"])', out = [];
+    var dlg = mNavDialog(), det = $('detail');
     mNavScope().forEach(function(root){
       [].slice.call(root.querySelectorAll(sel)).forEach(function(el){
-        if(el.disabled || el.classList.contains('hhot') || el.closest('[hidden],[inert]') || el.getClientRects().length === 0) return;
+        if(el.disabled || el.closest('[hidden],[inert]') || el.getClientRects().length === 0) return;
+        if(el.matches('.hhot,.hknob,.hrdial,[role=slider]')) return;
+        if(!dlg && det && det.contains(el) && el.matches(M_SYS) ) return;
+        if(!dlg && det && det.contains(el) && !el.matches('[role=menuitem],.mi,.adx')) return;   // no player: só menus
         var cs = getComputedStyle(el); if(cs.visibility === 'hidden' || cs.pointerEvents === 'none' || +cs.opacity === 0) return;
+        var r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        if(cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight){          // coberto por outra camada (ex.: topo atrás do player)? não é alcançável
+          var t = document.elementFromPoint(cx, cy); if(t && t !== el && !el.contains(t) && !t.contains(el)) return;
+        }
         out.push(el);
       });
     });
@@ -4249,6 +4266,7 @@
   function mNavMark(el){
     if(mnav.el && mnav.el !== el) mnav.el.classList.remove('mnavf');
     mnav.el = el; if(!el) return;
+    mnav.di = el.classList && el.classList.contains('drawer') ? el.getAttribute('data-i') : null;
     el.classList.add('mnavf');
     try{ el.focus({preventScroll: true}); }catch(e){}
     if(el.scrollIntoView) el.scrollIntoView({block: 'nearest', inline: 'nearest'});
@@ -4282,19 +4300,31 @@
     if(d) midiNavStep(d > 0 ? 1 : -1);
   }
   function midiNavStep(dir){
+    if(mNavFlip()){                                  // gaveta aberta: o encoder folheia os discos (igual às setas do teclado)
+      if(camBusy) return;
+      mNavMark(null); ensureAudio(); hideHint();
+      target = clamp(Math.round(target) + (dir > 0 ? 1 : -1), 0, N - 1); kick(); return;
+    }
     var list = mNavItems(); if(!list.length){ mToast('Não há itens de menu para navegar nesta tela.'); return; }
     var i = list.indexOf(mnav.el);
+    if(i < 0 && mnav.di !== null) list.forEach(function(e, k){ if(e.classList.contains('drawer') && e.getAttribute('data-i') === mnav.di) i = k; });   // a loja foi redesenhada: volta à mesma gaveta
     if(i < 0){ i = list.indexOf(document.activeElement); if(i < 0) i = dir > 0 ? -1 : 0; }
     i = (i + dir + list.length) % list.length;
     mNavMark(list[i]); playClick('ui');
   }
   function midiNavClick(){
+    if(mNavFlip()){                                  // gaveta aberta: clique tira o disco que está na frente
+      if(camBusy) return;
+      ensureAudio(); playClick('ui'); mNavMark(null); openDetail(clamp(Math.round(target), 0, N - 1)); return;
+    }
     var list = mNavItems(), el = mnav.el;
     if(!el || list.indexOf(el) < 0){ mToast('Gire o encoder para escolher um item antes de clicar.'); return; }
+    var wasDrawer = el.classList.contains('drawer');
     if(el.tagName === 'SELECT'){                     // select não abre por código: avança para a próxima opção
       if(el.options.length){ el.selectedIndex = (el.selectedIndex + 1) % el.options.length; el.dispatchEvent(new Event('change', {bubbles: true})); }
     } else el.click();
-    if(!document.contains(el) || el.hidden){ mNavMark(null); }     // o item sumiu (ex.: fechou a janela): recomeça do zero
+    if(wasDrawer){ el.classList.remove('mnavf'); mnav.el = null; }                       // entrou na gaveta: agora o giro folheia
+    else if(!document.contains(el) || el.hidden){ mNavMark(null); }                     // o item sumiu (ex.: fechou a janela): recomeça do zero
   }
   function midiLearnStart(id){
     if(!isAdmin){ toast('Só o admin pode mapear o controlador.', true); return; }
