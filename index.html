@@ -130,7 +130,7 @@
   /* durante um comercial o player aparece, para dar para tocar em "Pular anúncio" */
   .yt-hidden .adx{display:none}
   .yt-hidden.ad-show .adx{display:block;position:absolute;top:6px;right:6px;z-index:2;width:28px;height:28px;padding:0;border-radius:50%;border:1.5px solid #fff;background:rgba(0,0,0,.78);color:#fff;font:700 13px/1 system-ui,sans-serif;cursor:pointer}
-  .yt-hidden.ad-show{left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;pointer-events:auto;border-radius:12px;box-shadow:0 0 0 2px rgba(255,255,255,.6),0 12px 40px rgba(0,0,0,.7)}
+  .yt-hidden.ad-show{width:min(86vw,480px);height:min(48.4vw,270px);left:50%;top:50%;transform:translate(-50%,-50%);z-index:100000;pointer-events:auto;border-radius:12px;box-shadow:0 0 0 2px rgba(255,255,255,.6),0 12px 40px rgba(0,0,0,.7)}
 
   .tracks{list-style:none;margin:0 0 12px;padding:4px;max-height:24vh;overflow:auto;border-radius:10px;background:rgba(255,255,255,.07);overscroll-behavior:contain}
   .trk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:transparent;color:#eef3f1;padding:10px 10px;border-radius:8px;font-size:15px;line-height:1.25}
@@ -1488,7 +1488,7 @@
       try{ (e.target || player).pauseVideo(); }catch(_){} ytPlay = false; return;
     }
     ytPlay = (s === 1);
-    if(s === 1){ detail.classList.add('playing'); startProgress(); applyVolume(); }
+    if(s === 1){ detail.classList.add('playing'); startProgress(); adSuspect = false; applyVolume(); }
     else if(s === 2){ detail.classList.remove('playing'); }
     else if(s === 0){
       detail.classList.remove('playing');
@@ -1726,7 +1726,7 @@
 
   /* ---------- volume (controla o player do YouTube de verdade) ---------- */
   var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
-  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0, adLoadAt = 0, adStarted = false;   // comercial do YouTube (ver adWatch)
+  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0, adLoadAt = 0, adStarted = false, adSuspect = false;   // comercial do YouTube (ver adWatch)
   var AD_SHOW_PLAYER = true;   // true: mostra o player durante o comercial para você poder tocar em "Pular anúncio"
   try{ var sv = localStorage.getItem('gaveta:vol'); if(sv !== null && !isNaN(+sv)) volume = clamp(+sv, 0, 100); }catch(e){}
   function paintVolume(){
@@ -1740,7 +1740,7 @@
     if(!player || !playerReady) return;
     // adActive: silencia só durante o comercial; o volume escolhido pelo usuário não é alterado
     try{
-      if(adActive){ player.setVolume(0); player.mute(); }              // comercial: volume 0 E mudo (nunca devolve o volume aqui)
+      if(adActive || adSuspect){ player.setVolume(0); player.mute(); }     // comercial (ou suspeita de): volume 0 E mudo (nunca devolve o volume aqui)
       else { player.setVolume(volume); if(muted || volume === 0) player.mute(); else player.unMute(); }
     }catch(e){}
   }
@@ -2493,6 +2493,7 @@
     if(AD_SHOW_PLAYER){
       var box = document.querySelector('.yt-hidden');
       if(box){ box.classList.toggle('ad-show', on); box.setAttribute('aria-hidden', on ? 'false' : 'true'); }
+      try{ var bw = Math.round(Math.min(innerWidth * 0.86, 480)); player.setSize(on ? bw : 256, on ? Math.round(bw * 9 / 16) : 256); }catch(e){}
     }
     if(quiet) return;
     var waiting = on && sig && (sig.state === -1 || sig.state === 5);   // parado sem começar: quase sempre o navegador pedindo um toque, não um comercial
@@ -2502,10 +2503,13 @@
   function adSlowNet(){ try{ var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection; return !!c && (!!c.saveData || /(2g|3g)$/.test(c.effectiveType || '')); }catch(e){ return false; } }
   function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
     var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
-    if(!ok){ if(adActive) adSet(false); adHits = adClear = adStall = 0; return; }
+    if(!ok){ if(adActive) adSet(false); adHits = adClear = adStall = 0; if(adSuspect){ adSuspect = false; applyVolume(); } return; }
     if(adActive){ try{ player.mute(); player.setVolume(0); }catch(e){} }   // a cada 100 ms, sem confiar em isMuted()/getVolume() (o player de anúncio pode responder errado)
     var exp = adExpectedId(); if(!exp) return;
     var now = performance.now(), s = adSignals(); adRecent[exp] = now;
+    /* suspeita: o player saiu de "tocando" sem você ter pausado. A música não faz som assim, então muda JÁ (sem esperar a detecção, que leva segundos); o som volta quando o player voltar a tocar */
+    var sus = !adActive && !userPaused && s.state !== 1 && now >= adSnoozeUntil;
+    if(sus !== adSuspect){ adSuspect = sus; applyVolume(); }
     // id "de fora" = não é o esperado nem um que acabou de ser o esperado (troca de faixa ainda carregando)
     function foreign(r){ return !!r && r !== exp && !(adRecent[r] && now - adRecent[r] < 4000); }
     // só conta como "de fora" se o player está TOCANDO ou carregando (1/3): um vídeo antigo parado/engatilhado não é anúncio
