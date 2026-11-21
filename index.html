@@ -602,7 +602,7 @@
   .heq .eqscr{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8d8a85,#3b3936 55%,#161412);box-shadow:0 1px 2px rgba(0,0,0,.8)}
   .heq .eqscr::after{content:"";position:absolute;left:2px;right:2px;top:5.2px;height:1.6px;background:#0d0c0b;transform:rotate(35deg)}
   .heq .eqt{left:32px;top:14px;font-size:17px;font-weight:700;letter-spacing:.07em;color:#ebe4d4;text-shadow:0 1px 0 #000}
-  .heq .eqline{left:190px;right:150px;top:24px;height:1px;background:linear-gradient(90deg,rgba(235,228,212,.7),rgba(235,228,212,.12))}
+  .heq .eqline{left:190px;right:300px;top:24px;height:1px;background:linear-gradient(90deg,rgba(235,228,212,.7),rgba(235,228,212,.12))}
   .heq .eqsc{left:22px;width:40px;text-align:right;font-size:13px;line-height:14px;margin-top:-7px;color:#e1d9c7;font-weight:500}
   .heq .eqf{left:112px;top:0;width:460px;height:100%}
   .hef{position:absolute;top:34px;width:76.66px;height:140px;touch-action:none;cursor:ns-resize;outline:none}
@@ -616,10 +616,13 @@
     box-shadow:0 3px 5px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(0,0,0,.6)}
   .hef .hefk::after{content:"";position:absolute;left:3px;right:3px;top:9.4px;height:2px;border-radius:1px;background:#f0e9d9;box-shadow:0 0 2px rgba(255,255,255,.35)}
   .hef .hefl{position:absolute;left:0;right:0;top:118px;text-align:center;font-size:13px;line-height:16px;color:#e8e1d1;font-weight:500}
+  .heq .eqst{right:104px;top:17px;width:190px;text-align:right;font-size:10px;font-weight:700;letter-spacing:.09em;color:#d79b42;white-space:nowrap}
+  .heq.ext .eqst{color:#5fe39a}
   .heq .eqname{right:46px;top:34px;width:44px;text-align:center;font-size:14px;font-weight:700;letter-spacing:.06em}
   .heq .eqled{right:49px;top:60px;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#101010 0 46%,#2c2a27 48% 100%);box-shadow:0 0 0 1px #000,0 1px 0 rgba(255,255,255,.1)}
   .heq .eqled::after{content:"";position:absolute;inset:8px;border-radius:50%;background:#103a22;box-shadow:inset 0 0 4px rgba(0,0,0,.8);transition:background .4s,box-shadow .4s}
-  .scene:not(.off) .heq .eqled::after{background:radial-gradient(circle at 40% 35%,#c9ffe0,#33ee8c 45%,#0b9a50);box-shadow:0 0 10px 3px rgba(60,255,150,.65)}
+  .scene:not(.off) .heq .eqled::after{background:radial-gradient(circle at 40% 35%,#ffe6b8,#e8a23a 45%,#8a5a12);box-shadow:0 0 8px 2px rgba(232,162,58,.5)}
+  .scene:not(.off) .heq.ext .eqled::after{background:radial-gradient(circle at 40% 35%,#c9ffe0,#33ee8c 45%,#0b9a50);box-shadow:0 0 10px 3px rgba(60,255,150,.65)}
   .scene.off .heq{filter:brightness(.45) saturate(.7)}
   @media (prefers-reduced-motion:reduce){.heq,.heq.on{transition-duration:.01s}}
 
@@ -915,7 +918,7 @@
         <div class="heq" id="hEq" role="group" aria-label="Equalizador gráfico de 6 bandas">
           <i class="eqscr" style="left:10px;top:10px"></i><i class="eqscr" style="right:10px;top:10px"></i>
           <i class="eqscr" style="left:10px;bottom:10px"></i><i class="eqscr" style="right:10px;bottom:10px"></i>
-          <b class="eqt">EQUALIZER</b><i class="eqline"></i>
+          <b class="eqt">EQUALIZER</b><i class="eqline"></i><span class="eqst" id="hEqSt"></span>
           <span class="eqsc" style="top:46px">+12</span><span class="eqsc" style="top:94px">0</span><span class="eqsc" style="top:142px">-12</span>
           <div class="eqf" id="hEqF"></div>
           <span class="eqname">EQ</span><i class="eqled"></i>
@@ -4077,16 +4080,16 @@
         PRÓPRIO APP gera (chiado de vinil/fita, teclas, rebobinagem, cliques). A música do YouTube/rádio vem de
         fora (iframe/stream sem CORS) e o navegador não deixa processá-la.
      ===================================================================== */
-  var EQ_F = [60, 250, 1000, 4000, 8000, 16000], EQ_L = ['60Hz', '250Hz', '1kHz', '4kHz', '8kHz', '16kHz'], EQ_IDLE = 3000;
-  var eq = {v: [0, 0, 0, 0, 0, 0], ctx: null, nodes: null, tm: 0, st: 0, drag: 0, fd: [], heq: $('hEq')};
+  var EQ_F = [60, 150, 400, 1000, 3000, 10000], EQ_L = ['60Hz', '150Hz', '400Hz', '1kHz', '3kHz', '10kHz'], EQ_IDLE = 3000;   // mesmas bandas da extensão Retro EQ
+  var eq = {v: [0, 0, 0, 0, 0, 0], ctx: null, nodes: null, tm: 0, st: 0, drag: 0, fd: [], heq: $('hEq'), ext: false, snd: 0, dirty: {}};
   try{ var seq = JSON.parse(localStorage.getItem('gaveta:eq') || 'null'); if(seq && seq.length === 6) eq.v = seq.map(function(n){ return clamp(+n || 0, -12, 12); }); }catch(e){}
   function eqDest(){                                  // entrada da cadeia (cria sob demanda); sem AudioContext cai direto na saída
     if(!ac) return null;
     if(!eq) return ac.destination;                    // ainda não inicializado
     if(eq.ctx !== ac){
       eq.ctx = ac; eq.nodes = EQ_F.map(function(f, i){
-        var n = ac.createBiquadFilter(); n.type = i === 0 ? 'lowshelf' : i === EQ_F.length - 1 ? 'highshelf' : 'peaking';
-        n.frequency.value = f; n.Q.value = 1.0; n.gain.value = eq.v[i]; return n;
+        var n = ac.createBiquadFilter(); n.type = 'peaking';
+        n.frequency.value = f; n.Q.value = 1.0; n.gain.value = eq.ext ? 0 : eq.v[i]; return n;
       });
       for(var i = 0; i < eq.nodes.length - 1; i++) eq.nodes[i].connect(eq.nodes[i + 1]);
       eq.nodes[eq.nodes.length - 1].connect(ac.destination);
@@ -4095,7 +4098,8 @@
   }
   function eqApply(){
     if(!eq.nodes || eq.ctx !== ac) return;
-    eq.nodes.forEach(function(n, i){ try{ n.gain.setTargetAtTime(eq.v[i], ac.currentTime, 0.03); }catch(e){ n.gain.value = eq.v[i]; } });
+    eq.nodes.forEach(function(n, i){ var g = eq.ext ? 0 : eq.v[i];                  // extensão ativa: ela já equaliza a aba inteira (inclui os sons do app)
+      try{ n.gain.setTargetAtTime(g, ac.currentTime, 0.03); }catch(e){ n.gain.value = g; } });
   }
   function eqBuild(){
     var box = $('hEqF'); if(!box || !eq.heq) return;
@@ -4133,7 +4137,7 @@
   function eqSet(i, db){
     db = Math.round(clamp(db, -12, 12) * 4) / 4;
     if(db !== eq.v[i]){
-      eq.v[i] = db; eqPaint(); eqApply();
+      eq.v[i] = db; eqPaint(); eqApply(); eqSend(i);
       clearTimeout(eq.st); eq.st = setTimeout(function(){ try{ localStorage.setItem('gaveta:eq', JSON.stringify(eq.v)); }catch(e){} }, 400);
     }
     eqPoke();
@@ -4157,6 +4161,35 @@
   }
   eqBuild();
 
+  /* ----- ponte com a extensão Retro EQ (captura a aba e equaliza o áudio do YouTube de verdade) -----
+     protocolo da extensão: página → content script: {source:'retro-eq-test', type:'SET_BAND', index, value}
+                            extensão → página:        {source:'retro-eq-extension', type:'STATUS', active, text}
+     Só funciona em páginas que a extensão libera (localhost, 127.0.0.1, *.github.io), nunca em file://. */
+  function eqPost(msg){ try{ window.postMessage(msg, location.origin); }catch(e){} }
+  function eqSend(i){                                 // agrupa rajadas (knob MIDI manda dezenas de valores por segundo)
+    eq.dirty[i] = 1; if(eq.snd) return;
+    eq.snd = setTimeout(function(){
+      eq.snd = 0; var d = eq.dirty; eq.dirty = {};
+      for(var k in d) eqPost({source: 'retro-eq-test', type: 'SET_BAND', index: +k, value: eq.v[+k]});
+    }, 30);
+  }
+  function eqSync(){ for(var i = 0; i < EQ_F.length; i++) eqSend(i); }
+  function eqExtPaint(text){
+    var h = eq.heq, c = $('hEqSt'); if(!h) return;
+    h.classList.toggle('ext', eq.ext);
+    if(c) c.textContent = eq.ext ? 'EQ REAL · EXTENSÃO ATIVA' : (/falha/i.test(text || '') ? 'FALHA NA CAPTURA' : 'EXTENSÃO INATIVA');
+    h.title = eq.ext ? 'Equalizando o áudio da aba (YouTube) pela extensão' : 'Extensão Retro EQ não está capturando: o EQ só atua nos sons do aparelho';
+  }
+  window.addEventListener('message', function(e){
+    if(e.source !== window || e.origin !== location.origin) return;
+    var d = e.data; if(!d || d.source !== 'retro-eq-extension' || d.type !== 'STATUS') return;
+    var was = eq.ext; eq.ext = !!d.active; eqExtPaint(d.text); eqApply();
+    if(eq.ext){ eqSync(); if(!was) toast('Equalizador real ativo: os faders agora atuam no som.'); }     // aplica os valores atuais dos faders de imediato
+    else if(was) toast('Captura da extensão parada: o EQ voltou a atuar só nos sons do aparelho.');
+  });
+  eqExtPaint(''); eqSync();                           // caso a captura já esteja ativa (página recarregada)
+
+
   /* =====================================================================
      CONTROLADOR MIDI (só desktop, 1 controlador por vez, sem retorno de luz)
      - qualquer controlador: o admin mapeia cada botão com "Aprender"; o perfil é guardado por nome de controlador
@@ -4167,7 +4200,7 @@
   var MCTL = [
     ['TAPE', 'tRec', 'REC', 'btn'], ['TAPE', 'tRew', 'REW', 'btn'], ['TAPE', 'tFf', 'FF', 'btn'], ['TAPE', 'tPlay', 'PLAY', 'btn'], ['TAPE', 'tStop', 'STOP', 'btn'], ['TAPE', 'tPause', 'PAUSE', 'btn'],
     ['VOLUME', 'vol', 'Volume', 'knob'],
-    ['EQUALIZADOR', 'eq1', '60 Hz', 'knob'], ['EQUALIZADOR', 'eq2', '250 Hz', 'knob'], ['EQUALIZADOR', 'eq3', '1 kHz', 'knob'], ['EQUALIZADOR', 'eq4', '4 kHz', 'knob'], ['EQUALIZADOR', 'eq5', '8 kHz', 'knob'], ['EQUALIZADOR', 'eq6', '16 kHz', 'knob'],
+    ['EQUALIZADOR', 'eq1', '60 Hz', 'knob'], ['EQUALIZADOR', 'eq2', '150 Hz', 'knob'], ['EQUALIZADOR', 'eq3', '400 Hz', 'knob'], ['EQUALIZADOR', 'eq4', '1 kHz', 'knob'], ['EQUALIZADOR', 'eq5', '3 kHz', 'knob'], ['EQUALIZADOR', 'eq6', '10 kHz', 'knob'],
     ['CONTROLES', 'swPower', 'POWER', 'sw'], ['CONTROLES', 'swSource', 'SOURCE', 'sw'], ['CONTROLES', 'swFilter', 'FILTER', 'sw'],
     ['TRANSPORT', 'xPrev', 'ANTERIOR', 'btn'], ['TRANSPORT', 'xPlay', 'PLAY', 'btn'], ['TRANSPORT', 'xNext', 'PRÓXIMO', 'btn'], ['TRANSPORT', 'xStop', 'STOP', 'btn'],
     ['RÁDIO', 'rRadio', 'RÁDIO', 'btn'], ['RÁDIO', 'rDial', 'DIAL (sintonia)', 'knob'],
@@ -4528,7 +4561,7 @@
         } else if(id === 'nRotL'){
           ex = '<div class="ex">Só para encoders que mandam outro CC/nota para o giro anti-horário. Mapeie o horário em “GIRO” (modo “Um CC/nota por sentido”).</div>';
         } else if(/^eq[1-6]$/.test(id)){
-          ex = '<div class="ex">Potenciômetro: gira o fader desta banda (−12 a +12 dB). O módulo EQUALIZER aparece no lugar dos VUs e some após alguns segundos parado.</div>';
+          ex = '<div class="ex">Potenciômetro: gira o fader desta banda (−12 a +12 dB) na música, com a extensão Retro EQ capturando a aba. O módulo EQUALIZER aparece no lugar dos VUs e some após alguns segundos parado.</div>';
         } else if(c.type === 'knob'){
           ex = '<div class="ex">O volume começa no mínimo e o knob só assume depois de passar pelo valor atual.</div>';
         }
