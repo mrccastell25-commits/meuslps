@@ -591,6 +591,38 @@
   .byet{font:700 22px 'Bricolage Grotesque',system-ui,sans-serif;letter-spacing:.3em;color:#ffb347}
   .byeh{max-width:300px;margin:0;font:400 13px/1.5 'Special Elite',ui-monospace,monospace;color:rgba(239,224,191,.65)}
 
+  /* ===== módulo EQUALIZADOR: cobre os VUs/válvulas quando um knob de EQ é girado; volta sozinho após alguns segundos ===== */
+  .heq{left:1010px;top:40px;width:686px;height:181px;box-sizing:border-box;border-radius:4px;overflow:hidden;z-index:6;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .75s ease,visibility 0s linear .75s;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px),linear-gradient(180deg,#2a2724,#191715 55%,#1e1b19);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.08),inset 0 -12px 26px rgba(0,0,0,.5);
+    color:#e8e1d1;font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-user-select:none;user-select:none}
+  .heq.on{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .6s ease,visibility 0s}
+  .heq>*{position:absolute}
+  .heq .eqscr{width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#8d8a85,#3b3936 55%,#161412);box-shadow:0 1px 2px rgba(0,0,0,.8)}
+  .heq .eqscr::after{content:"";position:absolute;left:2px;right:2px;top:5.2px;height:1.6px;background:#0d0c0b;transform:rotate(35deg)}
+  .heq .eqt{left:32px;top:14px;font-size:17px;font-weight:700;letter-spacing:.07em;color:#ebe4d4;text-shadow:0 1px 0 #000}
+  .heq .eqline{left:190px;right:150px;top:24px;height:1px;background:linear-gradient(90deg,rgba(235,228,212,.7),rgba(235,228,212,.12))}
+  .heq .eqsc{left:22px;width:40px;text-align:right;font-size:13px;line-height:14px;margin-top:-7px;color:#e1d9c7;font-weight:500}
+  .heq .eqf{left:112px;top:0;width:460px;height:100%}
+  .hef{position:absolute;top:34px;width:76.66px;height:140px;touch-action:none;cursor:ns-resize;outline:none}
+  .hef:focus-visible .hefk{box-shadow:0 0 0 2px #ffd58a,0 2px 3px rgba(0,0,0,.7)}
+  .hef .hefs{position:absolute;left:50%;margin-left:-3px;top:12px;width:6px;height:96px;border-radius:3px;background:linear-gradient(90deg,#030303,#0d0c0b 45%,#2a2724);box-shadow:inset 0 0 3px #000,0 0 0 1px rgba(255,255,255,.07)}
+  .hef .hefs::before,.hef .hefs::after{content:"";position:absolute;top:-1px;height:98px;width:12px;opacity:.5;
+    background:repeating-linear-gradient(180deg,rgba(235,228,212,.55) 0 1px,transparent 1px 24px)}
+  .hef .hefs::before{right:100%;margin-right:5px}.hef .hefs::after{left:100%;margin-left:5px}
+  .hef .hefk{position:absolute;left:50%;margin-left:-19px;width:38px;height:21px;margin-top:-10.5px;border-radius:3px;will-change:top;
+    background:linear-gradient(180deg,#67635e,#34312e 46%,#171513 54%,#403d3a);
+    box-shadow:0 3px 5px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(0,0,0,.6)}
+  .hef .hefk::after{content:"";position:absolute;left:3px;right:3px;top:9.4px;height:2px;border-radius:1px;background:#f0e9d9;box-shadow:0 0 2px rgba(255,255,255,.35)}
+  .hef .hefl{position:absolute;left:0;right:0;top:118px;text-align:center;font-size:13px;line-height:16px;color:#e8e1d1;font-weight:500}
+  .heq .eqname{right:46px;top:34px;width:44px;text-align:center;font-size:14px;font-weight:700;letter-spacing:.06em}
+  .heq .eqled{right:49px;top:60px;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#101010 0 46%,#2c2a27 48% 100%);box-shadow:0 0 0 1px #000,0 1px 0 rgba(255,255,255,.1)}
+  .heq .eqled::after{content:"";position:absolute;inset:8px;border-radius:50%;background:#103a22;box-shadow:inset 0 0 4px rgba(0,0,0,.8);transition:background .4s,box-shadow .4s}
+  .scene:not(.off) .heq .eqled::after{background:radial-gradient(circle at 40% 35%,#c9ffe0,#33ee8c 45%,#0b9a50);box-shadow:0 0 10px 3px rgba(60,255,150,.65)}
+  .scene.off .heq{filter:brightness(.45) saturate(.7)}
+  @media (prefers-reduced-motion:reduce){.heq,.heq.on{transition-duration:.01s}}
+
   /* ===== controlador MIDI (só desktop) ===== */
   .mnavf{outline:3px solid #ffd58a!important;outline-offset:2px;box-shadow:0 0 0 5px rgba(255,213,138,.28),0 0 16px 4px rgba(255,190,80,.55)!important}
   .drawer.mnavf{background:rgba(255,196,110,.26)!important;outline-offset:-3px}
@@ -880,6 +912,14 @@
         <div class="hknob" id="hRecKnob" role="slider" tabindex="0" aria-label="Nível de gravação" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" style="left:1200px;top:671px;width:80px;height:80px"><div class="kface" style="background-image:url(data:image/jpeg;base64,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)"></div><div class="kptr" id="hRKptr"><i style="left:38.25px;top:4px;width:3.5px;height:14px"></i></div></div>
         <div class="reel" id="hReelL" style="left:1437px;top:499px"></div>
         <div class="reel" id="hReelR" style="left:1558px;top:500px"></div>
+        <div class="heq" id="hEq" role="group" aria-label="Equalizador gráfico de 6 bandas">
+          <i class="eqscr" style="left:10px;top:10px"></i><i class="eqscr" style="right:10px;top:10px"></i>
+          <i class="eqscr" style="left:10px;bottom:10px"></i><i class="eqscr" style="right:10px;bottom:10px"></i>
+          <b class="eqt">EQUALIZER</b><i class="eqline"></i>
+          <span class="eqsc" style="top:46px">+12</span><span class="eqsc" style="top:94px">0</span><span class="eqsc" style="top:142px">-12</span>
+          <div class="eqf" id="hEqF"></div>
+          <span class="eqname">EQ</span><i class="eqled"></i>
+        </div>
       </div>
     </div>
   </div>
@@ -2325,7 +2365,7 @@
       var s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
       s.buffer = buf; f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 0.5;
       g.gain.value = 0.22 * (muted ? 0 : volume/100);
-      s.connect(f); f.connect(g); g.connect(ac.destination); s.start();
+      s.connect(f); f.connect(g); g.connect(eqDest()); s.start();
     }catch(e){}
   }
   function radioTune(i){
@@ -2546,7 +2586,7 @@
     var src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
     var hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = kind === 'lp' ? 900 : 2500;
     var g = ac.createGain(); g.gain.value = 0;
-    src.connect(hp); hp.connect(g); g.connect(ac.destination); src.start();
+    src.connect(hp); hp.connect(g); g.connect(eqDest()); src.start();
     crk = {src: src, g: g, kind: kind};
   }
   function syncCrackle(){
@@ -2574,7 +2614,7 @@
     var t0 = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(1700, t0); o.frequency.exponentialRampToValueAtTime(800, t0 + 0.035);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
-    o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 0.07);
+    o.connect(g); g.connect(eqDest()); o.start(t0); o.stop(t0 + 0.07);
   }
   function playClick(kind){
     if(!soundOn) return;
@@ -2586,7 +2626,7 @@
     if(!b){ btnClickSynth(); return; }
     var c = CLK[kind] || CLK.btn, s = ac.createBufferSource(), g = ac.createGain();
     s.buffer = b; s.playbackRate.value = c[0]; g.gain.value = c[1];
-    s.connect(g); g.connect(ac.destination); s.start();
+    s.connect(g); g.connect(eqDest()); s.start();
   }
   function whirStart(rate){
     if(whir || !soundOn) return;
@@ -2595,7 +2635,7 @@
     var s = ac.createBufferSource(), g = ac.createGain();
     s.buffer = b; s.loop = true; s.loopStart = 0.03; s.loopEnd = Math.max(0.2, b.duration - 0.03); s.playbackRate.value = rate;
     g.gain.value = 0; g.gain.setTargetAtTime(1.3, ac.currentTime, 0.05);
-    s.connect(g); g.connect(ac.destination); s.start(); whir = {s: s, g: g};
+    s.connect(g); g.connect(eqDest()); s.start(); whir = {s: s, g: g};
   }
   function whirStop(silent){
     if(!whir) return;
@@ -4030,6 +4070,94 @@
   })();
 
   /* =====================================================================
+     EQUALIZADOR (6 bandas): módulo que substitui os VUs enquanto um knob/fader é mexido
+      - girar um knob MIDI (ou arrastar um fader na tela) mostra o módulo com fade e move os faders;
+      - sem movimento por EQ_IDLE ms, o módulo some com fade e os VUs/válvulas voltam;
+      - o som: cadeia de filtros (low shelf, 4 peaking, high shelf; ±12 dB) por onde passam os sons que o
+        PRÓPRIO APP gera (chiado de vinil/fita, teclas, rebobinagem, cliques). A música do YouTube/rádio vem de
+        fora (iframe/stream sem CORS) e o navegador não deixa processá-la.
+     ===================================================================== */
+  var EQ_F = [60, 250, 1000, 4000, 8000, 16000], EQ_L = ['60Hz', '250Hz', '1kHz', '4kHz', '8kHz', '16kHz'], EQ_IDLE = 3000;
+  var eq = {v: [0, 0, 0, 0, 0, 0], ctx: null, nodes: null, tm: 0, st: 0, drag: 0, fd: [], heq: $('hEq')};
+  try{ var seq = JSON.parse(localStorage.getItem('gaveta:eq') || 'null'); if(seq && seq.length === 6) eq.v = seq.map(function(n){ return clamp(+n || 0, -12, 12); }); }catch(e){}
+  function eqDest(){                                  // entrada da cadeia (cria sob demanda); sem AudioContext cai direto na saída
+    if(!ac) return null;
+    if(!eq) return ac.destination;                    // ainda não inicializado
+    if(eq.ctx !== ac){
+      eq.ctx = ac; eq.nodes = EQ_F.map(function(f, i){
+        var n = ac.createBiquadFilter(); n.type = i === 0 ? 'lowshelf' : i === EQ_F.length - 1 ? 'highshelf' : 'peaking';
+        n.frequency.value = f; n.Q.value = 1.0; n.gain.value = eq.v[i]; return n;
+      });
+      for(var i = 0; i < eq.nodes.length - 1; i++) eq.nodes[i].connect(eq.nodes[i + 1]);
+      eq.nodes[eq.nodes.length - 1].connect(ac.destination);
+    }
+    return eq.nodes[0];
+  }
+  function eqApply(){
+    if(!eq.nodes || eq.ctx !== ac) return;
+    eq.nodes.forEach(function(n, i){ try{ n.gain.setTargetAtTime(eq.v[i], ac.currentTime, 0.03); }catch(e){ n.gain.value = eq.v[i]; } });
+  }
+  function eqBuild(){
+    var box = $('hEqF'); if(!box || !eq.heq) return;
+    EQ_F.forEach(function(f, i){
+      var d = document.createElement('div'); d.className = 'hef'; d.style.left = (i * 76.66) + 'px'; d.tabIndex = 0;
+      d.setAttribute('role', 'slider'); d.setAttribute('aria-label', 'Equalizador ' + EQ_L[i]);
+      d.setAttribute('aria-valuemin', '-12'); d.setAttribute('aria-valuemax', '12'); d.setAttribute('aria-orientation', 'vertical');
+      d.innerHTML = '<i class="hefs"></i><i class="hefk"></i><span class="hefl">' + EQ_L[i] + '</span>';
+      box.appendChild(d); eq.fd[i] = {el: d, k: d.querySelector('.hefk'), s: d.querySelector('.hefs')};
+      var fromY = function(y){ var r = eq.fd[i].s.getBoundingClientRect(); if(!r.height) return; var db = 12 - clamp((y - r.top) / r.height, 0, 1) * 24; eqSet(i, Math.abs(db) < 0.6 ? 0 : db); };
+      d.addEventListener('pointerdown', function(e){
+        if(e.button) return; e.preventDefault(); try{ d.setPointerCapture(e.pointerId); }catch(x){}
+        eq.drag++; d._drag = true; ensureAudio(); fromY(e.clientY);
+      });
+      d.addEventListener('pointermove', function(e){ if(d._drag) fromY(e.clientY); });
+      var end = function(){ if(d._drag){ d._drag = false; eq.drag = Math.max(0, eq.drag - 1); eqPoke(); } };
+      d.addEventListener('pointerup', end); d.addEventListener('pointercancel', end); d.addEventListener('lostpointercapture', end);
+      d.addEventListener('dblclick', function(){ eqSet(i, 0); });
+      d.addEventListener('keydown', function(e){
+        var v = eq.v[i], k = e.key, nv = null;
+        if(k === 'ArrowUp' || k === 'ArrowRight') nv = v + 1; else if(k === 'ArrowDown' || k === 'ArrowLeft') nv = v - 1;
+        else if(k === 'PageUp') nv = v + 3; else if(k === 'PageDown') nv = v - 3; else if(k === 'Home') nv = -12; else if(k === 'End') nv = 12; else if(k === '0' || k === 'Delete') nv = 0;
+        if(nv === null) return; e.preventDefault(); eqSet(i, nv);
+      });
+    });
+    eqPaint();
+  }
+  function eqPaint(){
+    for(var i = 0; i < eq.fd.length; i++){
+      var f = eq.fd[i], v = eq.v[i];
+      f.k.style.top = (12 + (12 - v) / 24 * 96).toFixed(2) + 'px';
+      f.el.setAttribute('aria-valuenow', v.toFixed(1)); f.el.setAttribute('aria-valuetext', (v > 0 ? '+' : '') + v.toFixed(1) + ' dB');
+    }
+  }
+  function eqSet(i, db){
+    db = Math.round(clamp(db, -12, 12) * 4) / 4;
+    if(db !== eq.v[i]){
+      eq.v[i] = db; eqPaint(); eqApply();
+      clearTimeout(eq.st); eq.st = setTimeout(function(){ try{ localStorage.setItem('gaveta:eq', JSON.stringify(eq.v)); }catch(e){} }, 400);
+    }
+    eqPoke();
+  }
+  function eqPoke(){                                  // mostra o módulo (com fade) e reinicia a contagem para voltar aos VUs
+    var h = eq.heq; if(!h) return;
+    h.classList.add('on');
+    clearTimeout(eq.tm); eq.tm = setTimeout(eqIdle, EQ_IDLE);
+  }
+  function eqIdle(){
+    if(eq.drag){ eq.tm = setTimeout(eqIdle, EQ_IDLE); return; }          // ainda segurando um fader
+    if(eq.heq && eq.heq.contains(document.activeElement) && document.activeElement.classList.contains('hef')) document.activeElement.blur();
+    if(eq.heq) eq.heq.classList.remove('on');
+  }
+  function midiEq(i, raw, m){                         // knob absoluto (potenciômetro): 0..127 → −12..+12 dB, com "pé" no zero
+    if(!midiNeedDisc()) return;
+    ensureAudio();
+    var r = raw / 127; if(m && m.inv) r = 1 - r;
+    var db = r * 24 - 12; if(Math.abs(db) < 0.6) db = 0;
+    eqSet(i, db);
+  }
+  eqBuild();
+
+  /* =====================================================================
      CONTROLADOR MIDI (só desktop, 1 controlador por vez, sem retorno de luz)
      - qualquer controlador: o admin mapeia cada botão com "Aprender"; o perfil é guardado por nome de controlador
        no Firebase (gaveta_admin/midi/<nome>) e em cache local;
@@ -4039,6 +4167,7 @@
   var MCTL = [
     ['TAPE', 'tRec', 'REC', 'btn'], ['TAPE', 'tRew', 'REW', 'btn'], ['TAPE', 'tFf', 'FF', 'btn'], ['TAPE', 'tPlay', 'PLAY', 'btn'], ['TAPE', 'tStop', 'STOP', 'btn'], ['TAPE', 'tPause', 'PAUSE', 'btn'],
     ['VOLUME', 'vol', 'Volume', 'knob'],
+    ['EQUALIZADOR', 'eq1', '60 Hz', 'knob'], ['EQUALIZADOR', 'eq2', '250 Hz', 'knob'], ['EQUALIZADOR', 'eq3', '1 kHz', 'knob'], ['EQUALIZADOR', 'eq4', '4 kHz', 'knob'], ['EQUALIZADOR', 'eq5', '8 kHz', 'knob'], ['EQUALIZADOR', 'eq6', '16 kHz', 'knob'],
     ['CONTROLES', 'swPower', 'POWER', 'sw'], ['CONTROLES', 'swSource', 'SOURCE', 'sw'], ['CONTROLES', 'swFilter', 'FILTER', 'sw'],
     ['TRANSPORT', 'xPrev', 'ANTERIOR', 'btn'], ['TRANSPORT', 'xPlay', 'PLAY', 'btn'], ['TRANSPORT', 'xNext', 'PRÓXIMO', 'btn'], ['TRANSPORT', 'xStop', 'STOP', 'btn'],
     ['RÁDIO', 'rRadio', 'RÁDIO', 'btn'], ['RÁDIO', 'rDial', 'DIAL (sintonia)', 'knob'],
@@ -4160,7 +4289,7 @@
     var p = mProf(), m = p && p.map[id], c = MCT[id]; if(!m || !c) return;
     if(id === 'nRotL'){ if(t === 'c' || on) midiNavStep(m.inv ? 1 : -1); return; }      // encoder com CC/nota próprio para cada sentido
     if(id === 'nRot' && t === 'n'){ if(on && m.mode === 'dir') midiNavStep(m.inv ? -1 : 1); return; }
-    if(c.type === 'knob'){ if(t === 'c'){ if(id === 'rDial') midiDial(v, m); else if(id === 'nRot') midiNavRot(v, m); else midiVolume(v); } return; }
+    if(c.type === 'knob'){ if(t === 'c'){ if(id === 'rDial') midiDial(v, m); else if(id === 'nRot') midiNavRot(v, m); else if(/^eq[1-6]$/.test(id)) midiEq(+id.charAt(2) - 1, v, m); else midiVolume(v); } return; }
     if(c.type === 'sw' && m.mode !== 'tog'){ midiSwitch(id, m.inv ? !on : on); return; }
     if(on){ if(!m._dn){ m._dn = true; midiPress(id); } } else m._dn = false;     // botão: só no apertar
   }
@@ -4398,6 +4527,8 @@
           ex = '<div class="ex"><select class="mdmode" aria-label="Tipo de encoder">' + nopt.map(function(o){ return '<option value="' + o[0] + '"' + (nm === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select><label><input type="checkbox" class="mdinv"' + (m && m.inv ? ' checked' : '') + '> inverter sentido</label></div><div class="ex">Horário = próximo item, anti-horário = item anterior. Use “inverter” se estiver ao contrário.</div>';
         } else if(id === 'nRotL'){
           ex = '<div class="ex">Só para encoders que mandam outro CC/nota para o giro anti-horário. Mapeie o horário em “GIRO” (modo “Um CC/nota por sentido”).</div>';
+        } else if(/^eq[1-6]$/.test(id)){
+          ex = '<div class="ex">Potenciômetro: gira o fader desta banda (−12 a +12 dB). O módulo EQUALIZER aparece no lugar dos VUs e some após alguns segundos parado.</div>';
         } else if(c.type === 'knob'){
           ex = '<div class="ex">O volume começa no mínimo e o knob só assume depois de passar pelo valor atual.</div>';
         }
