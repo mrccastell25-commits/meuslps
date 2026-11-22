@@ -2086,6 +2086,7 @@
   var srcSel = 'lp';             // posição da chave SOURCE (disco/fita). O rádio NÃO mexe nela
   var deck = 'stop';             // 'stop' | 'play' | 'rec' | 'ff' | 'rew'
   var rec = {on: false, seg: null};
+  var tseek = null;      // busca automática por faixa na fita: {dir, idx, pos, speed, resume}
   var powered = true, filterOn = false, recLevel = 50, shuttle = 0, tapeIdx = -1, lpResume = null, ytPlay = false, lastAdv = 0;
   var radio = {tok: 0, list: [], idx: 0, loaded: false, loading: false, state: 'idle', t0: 0, fails: 0, dir: 1, wantPlay: false, stopping: false, base: ''}, radioEl = new Audio();
   radioEl.preload = 'none';
@@ -2197,7 +2198,7 @@
     lcdSig = ''; hifiRefresh();
     return true;
   }
-  function tapeHalt(){ if(deck === 'play' || deck === 'ff' || deck === 'rew') deck = 'stop'; shuttle = 0; }
+  function tapeHalt(){ if(deck === 'play' || deck === 'ff' || deck === 'rew') deck = 'stop'; shuttle = 0; tseek = null; }
 
   /* ----- reprodução da fita ----- */
   function playTapeVideo(opts){        // funciona também sem disco aberto: cria o player se ainda não existe
@@ -2215,7 +2216,7 @@
     var L = tapeLen(); if(!L) return;
     var s = segAt(clamp(pos, 0, L - 0.05)); if(!s) return;
     tapeIdx = s.i; var g = tape.segs[s.i]; tape.pos = segOffset(s.i) + s.off;
-    mode = 'tape'; deck = 'play'; shuttle = 0; ytPlay = false; lastAdv = Date.now();
+    mode = 'tape'; deck = 'play'; shuttle = 0; tseek = null; ytPlay = false; lastAdv = Date.now();
     playTapeVideo(segOpts(g, s.off));
     detail.classList.remove('playing');
   }
@@ -2231,6 +2232,7 @@
   }
   function deckPlay(toggle){
     if(!powered || rec.on) return;
+    if(tseek){ tseek = null; deck = 'stop'; shuttle = 0; }              // apertar PLAY no meio da busca: toca de onde a fita estiver
     if(deck === 'play' && mode === 'tape'){
       try{ if(ytPlay){ if(toggle) player.pauseVideo(); } else player.playVideo(); }catch(e){}
       return;
@@ -2244,7 +2246,7 @@
     if(rec.on) recStop();
     if(mode === 'tape'){ try{ if(player && playerReady) player.pauseVideo(); }catch(e){} }
     if(deck !== 'stop') tapeHalt();
-    deck = 'stop'; shuttle = 0;
+    deck = 'stop'; shuttle = 0; tseek = null;
   }
   function deckPauseKey(){
     if(!powered || !player || !playerReady) return;
@@ -2255,7 +2257,8 @@
     if(!powered) return;
     if(rec.on){ note('Pare a gravação antes de rebobinar.'); return; }
     if(!tape.segs.length){ note('Fita vazia.'); return; }
-    if(deck === (dir > 0 ? 'ff' : 'rew')){ deckStop(); return; }
+    if(deck === (dir > 0 ? 'ff' : 'rew') && !tseek){ deckStop(); return; }
+    tseek = null;
     if(mode === 'tape' && ytPlay){ try{ player.pauseVideo(); }catch(e){} }
     deck = dir > 0 ? 'ff' : 'rew'; shuttle = dir;
     note(dir > 0 ? 'Avançando a fita…' : 'Rebobinando a fita…');
@@ -2265,6 +2268,27 @@
     tape.pos = segOffset(i);
     if(mode !== 'tape' && setSource('tape') === false) return;
     playTapeAt(tape.pos);
+  }
+  /* PREVIOUS / NEXT na fita: a fita avança ou rebobina sozinha até o começo da música pedida.
+     Cada toque seguido na mesma direção vai para a faixa seguinte; ao chegar, volta a tocar se estava tocando. */
+  function tapeSeek(d){
+    if(rec.on){ note('Pare a gravação antes de procurar faixas.'); return; }
+    if(!tape.segs.length){ note('Fita vazia.'); return; }
+    var n = tape.segs.length, tgt;
+    if(tseek && tseek.dir === d){ tgt = tseek.idx + d; }
+    else {
+      var s = segAt(clamp(tape.pos, 0, tapeLen() - 0.05)), i = s ? s.i : 0;
+      tgt = d < 0 ? ((s && s.off > 3) ? i : i - 1) : i + 1;
+    }
+    if(tgt >= n){ if(!tseek){ note('Não há próxima música na fita.'); } return; }
+    if(tgt < 0) tgt = 0;
+    var resume = tseek ? tseek.resume : (deck === 'play' && mode === 'tape');
+    var to = segOffset(tgt), dist = Math.abs(to - tape.pos);
+    if(dist < 0.5 && !tseek){ if(resume) playTapeAt(to); return; }       // já está no começo da primeira faixa
+    if(mode === 'tape' && ytPlay){ try{ player.pauseVideo(); }catch(e){} }
+    tseek = {dir: d, idx: tgt, pos: to, speed: clamp(dist / 2.4, 45, 500), resume: resume};
+    deck = d > 0 ? 'ff' : 'rew'; shuttle = d;
+    note((d > 0 ? 'Avançando' : 'Voltando') + ' até a faixa ' + (tgt + 1) + '…');
   }
   function tapeSkip(d){
     if(rec.on || !tape.segs.length) return;
@@ -2478,7 +2502,7 @@
     if(!on){
       radioStopAudio();
       if(rec.on) recStop();
-      deck = 'stop'; shuttle = 0; ytPlay = false;
+      deck = 'stop'; shuttle = 0; tseek = null; ytPlay = false;
       try{ if(player && playerReady) player.pauseVideo(); }catch(e){}
       detail.classList.remove('playing');
     }
@@ -2495,8 +2519,8 @@
     if(!player || !playerReady) return;
     try{ if(player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo(); }catch(e){}
   }
-  function mainPrev(){ if(!powered) return; if(mode === 'radio') radioStep(-1); else if(mode === 'tape') tapeSkip(-1); else trackStep(-1); }
-  function mainNext(){ if(!powered) return; if(mode === 'radio') radioStep(1); else if(mode === 'tape') tapeSkip(1); else trackStep(1); }
+  function mainPrev(){ if(!powered) return; if(mode === 'radio') radioStep(-1); else if(mode === 'tape') tapeSeek(-1); else trackStep(-1); }
+  function mainNext(){ if(!powered) return; if(mode === 'radio') radioStep(1); else if(mode === 'tape') tapeSeek(1); else trackStep(1); }
   function stopPlayback(){
     try{ if(player && playerReady){ player.pauseVideo(); player.seekTo(0, true); } }catch(e){}
     hifiTime(0, (player && playerReady && player.getDuration) ? player.getDuration() : 0);
@@ -2511,9 +2535,13 @@
     var cur = 0;
     if(player && playerReady && player.getCurrentTime){ try{ cur = player.getCurrentTime() || 0; }catch(e){} }
     if(deck === 'ff' || deck === 'rew'){
-      tape.pos += shuttle * 30 * dt;
+      tape.pos += shuttle * (tseek ? tseek.speed : 30) * dt;
       var L = tapeLen();
-      if(tape.pos <= 0){ tape.pos = 0; deckStop(); note('Início da fita.'); }
+      if(tseek && ((shuttle > 0 && tape.pos >= tseek.pos) || (shuttle < 0 && tape.pos <= tseek.pos))){
+        var sk = tseek; tseek = null; shuttle = 0; tape.pos = sk.pos;      // chegou: posiciona e volta a tocar se estava tocando
+        if(sk.resume) playTapeAt(tape.pos); else { deck = 'stop'; tapeSave(); }
+      }
+      else if(tape.pos <= 0){ tape.pos = 0; deckStop(); note('Início da fita.'); }
       else if(tape.pos >= L){ tape.pos = L; deckStop(); note('Fim da gravação.'); }
     } else if(rec.on){
       if(ytPlay && !adActive && mode === 'lp' && powered){
@@ -2753,8 +2781,8 @@
 
   var lastTxt = {t: null, c: null, d: null, f: null, led: null};
   /* fileira de baixo do aparelho (desktop): só os botões que fazem sentido em cada fonte, todos do mesmo tamanho dividindo o espaço (44…918 px) */
-  var NAV_ALL = ['hPrevA', 'hNextA', 'hBack', 'hShop', 'hRaf', 'hMont', 'hMix', 'hErase'];
-  var NAV_SETS = {lp: ['hPrevA', 'hNextA', 'hBack', 'hShop', 'hRaf', 'hMont'], tape: ['hBack', 'hShop', 'hMix', 'hErase'], radio: ['hBack', 'hShop']};
+  var NAV_ALL = ['hPrevA', 'hNextA', 'hBack', 'hShop', 'hRaf', 'hMix', 'hErase'];
+  var NAV_SETS = {lp: ['hPrevA', 'hNextA', 'hBack', 'hShop', 'hRaf'], tape: ['hBack', 'hShop', 'hMix', 'hErase'], radio: ['hBack', 'hShop']};
   function navLayout(dm){
     var set = NAV_SETS[dm] || NAV_SETS.lp, X0 = 44, X1 = 918, GAP = 10, n = set.length;
     var w = Math.min(214, Math.floor((X1 - X0 - (n - 1) * GAP) / n));
@@ -2970,24 +2998,26 @@
   function hotC(id, label, cx, cy, r, fn){ return hot(id, label, cx - r, cy - r, r*2, r*2, 'round', fn); }
 
   /* transporte (funciona na fonte ativa: disco ou fita) */
-  /* botões redondos: só atuam no disco e no rádio (nunca nas teclas do tape deck) */
+  /* botões redondos (PREVIOUS / PLAY / NEXT / STOP): atuam na fonte ativa: disco, fita ou rádio */
   function rndReady(){
-    if(!powered) return false;
-    if(mode === 'tape'){ note('A chave SOURCE está em fita: use as teclas do tape deck (ou ponha a chave em disco).'); return false; }   // a chave só muda pela mão do usuário
-    return true;
+    return powered;
   }
   /* luzes dos botões redondos: apagados na fita; no disco/rádio acende só o que está valendo.
      PLAY = está tocando de fato · STOP = foi parado por você · ⏮ ⏭ = piscam ao toque. Tudo derivado do estado real. */
   var rndStopOn = false, rndMode = null, rndWasPlaying = false;
   function rndLights(){
-    var dm = dmode(), on = powered && dm !== 'tape';
-    var playing = on && (dm === 'radio' ? (radio.state === 'playing' || radio.state === 'loading') : ytPlay);
+    var dm = dmode(), on = powered;
+    var playing = on && (dm === 'radio' ? (radio.state === 'playing' || radio.state === 'loading') : dm === 'tape' ? (deck === 'play' && ytPlay) : ytPlay);
     if(dm !== rndMode){ rndMode = dm; rndStopOn = false; }
     if(!on || (playing && !rndWasPlaying)) rndStopOn = false;   // o áudio só avisa que parou alguns ms depois do clique: só zera quando COMEÇA a tocar
     rndWasPlaying = !!playing;
     if(hHot.hPlay) hHot.hPlay.classList.toggle('rlit', !!playing);
     if(hHot.hStop) hHot.hStop.classList.toggle('rlit', on && rndStopOn && !playing);
     if(!on){ if(hHot.hPrev) hHot.hPrev.classList.remove('rlit'); if(hHot.hNext) hHot.hNext.classList.remove('rlit'); }
+    else if(dm === 'tape'){                                                   // na fita, ⏮ ⏭ ficam acesos enquanto a fita corre até a faixa
+      if(hHot.hPrev) hHot.hPrev.classList.toggle('rlit', !!tseek && tseek.dir < 0);
+      if(hHot.hNext) hHot.hNext.classList.toggle('rlit', !!tseek && tseek.dir > 0);
+    }
   }
   function rndFlash(id){ var e = hHot[id]; if(!e) return; e.classList.add('rlit'); setTimeout(function(){ e.classList.remove('rlit'); }, 320); }
   function rndPrev(){ if(rndReady()){ rndStopOn = false; rndFlash('hPrev'); mainPrev(); } }
@@ -3129,10 +3159,9 @@
   /* no modo fita, estes dois ocupam o lugar do "Abrir no YouTube Music" (a alternância está no hifiRefresh) */
   hot('hMix', 'Criar fita rápida', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
   hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
-  /* no modo disco (desktop), o lugar do "Abrir no YouTube Music" é de dois atalhos: sortear um disco e montar uma fita rápida */
+  /* no modo disco (desktop), o lugar do "Abrir no YouTube Music" é o atalho de sortear um disco */
   hot('hRaf', 'Sortear disco', 704, 803, 104, 38, 'rect hnav', function(){ raffle(); }).title = 'Sorteia um disco de qualquer gaveta e já toca';
-  hot('hMont', 'Montar fita', 814, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas (o disco continua tocando)';
-  hHot.hOpen.hidden = true; hHot.hRaf.hidden = true; hHot.hMont.hidden = true;
+  hHot.hOpen.hidden = true; hHot.hRaf.hidden = true;
   hHot.hMix.hidden = true; hHot.hErase.hidden = true;
 
   hLcd1.addEventListener('click', function(e){
