@@ -1840,7 +1840,7 @@
 
   /* ---------- volume (controla o player do YouTube de verdade) ---------- */
   var vol = $('vol'), volOut = $('volOut'), vMute = $('vMute'), volume = 80, muted = false;
-  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0, adLoadAt = 0, adStarted = false, adSuspect = false;   // comercial do YouTube (ver adWatch)
+  var adActive = false, adHits = 0, adClear = 0, adStall = 0, adRecent = {}, userPaused = false, adErrAt = 0, adResumeAt = 0, adSnoozeUntil = 0, adLoadAt = 0, adStarted = false, adSuspect = false, adSusAt = 0;   // comercial do YouTube (ver adWatch)
   var AD_SHOW_PLAYER = true;   // true: mostra o player durante o comercial para você poder tocar em "Pular anúncio"
   try{ var sv = localStorage.getItem('gaveta:vol'); if(sv !== null && !isNaN(+sv)) volume = clamp(+sv, 0, 100); }catch(e){}
   function paintVolume(){
@@ -2656,6 +2656,14 @@
     adSet(false, null, true);
     note('Comercial encerrado. Toque em play para continuar.');
   });
+  /* visual de publicidade (LED amarelo + visor): vale já na detecção formal (adActive) e também na SUSPEITA —
+     o player saiu de "tocando" sem você pausar. Dá ~0,8 s de folga se a música já tinha começado (corte no meio da faixa)
+     e ~3,5 s se ainda está abrindo (um carregamento normal não deve piscar como anúncio). Em rede lenta, só a detecção formal. */
+  function adVis(){
+    if(adActive) return true;
+    if(!adSuspect || !adSusAt || adSlowNet()) return false;
+    return performance.now() - adSusAt > (adStarted ? 800 : 3500);
+  }
   function adSlowNet(){ try{ var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection; return !!c && (!!c.saveData || /(2g|3g)$/.test(c.effectiveType || '')); }catch(e){ return false; } }
   function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
     var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
@@ -2665,7 +2673,7 @@
     var now = performance.now(), s = adSignals(); adRecent[exp] = now;
     /* suspeita: o player saiu de "tocando" sem você ter pausado. A música não faz som assim, então muda JÁ (sem esperar a detecção, que leva segundos); o som volta quando o player voltar a tocar */
     var sus = !adActive && !userPaused && s.state !== 1 && now >= adSnoozeUntil;
-    if(sus !== adSuspect){ adSuspect = sus; applyVolume(); }
+    if(sus !== adSuspect){ adSuspect = sus; adSusAt = sus ? now : 0; applyVolume(); }
     // id "de fora" = não é o esperado nem um que acabou de ser o esperado (troca de faixa ainda carregando)
     function foreign(r){ return !!r && r !== exp && !(adRecent[r] && now - adRecent[r] < 4000); }
     // só conta como "de fora" se o player está TOCANDO ou carregando (1/3): um vídeo antigo parado/engatilhado não é anúncio
@@ -2851,7 +2859,7 @@
     if(flashMsg && performance.now() < flashUntil) line = flashMsg;
     var f = (clamp(frac, 0, 1) * 100).toFixed(1) + '%';
     var led = 'l2led';
-    if(adActive && (mode === 'lp' || mode === 'tape')){ led += ' on ad blink'; line = '(Publicidade)'; }
+    if(adVis() && (mode === 'lp' || mode === 'tape')){ led += ' on ad blink'; line = '(Publicidade)'; }
     else if(rec.on) led += (ytPlay && mode === 'lp') ? ' on' : ' on blink';
     else if(mode === 'lp' && ytPlay) led += ' on';                                   // disco tocando
     else if(mode === 'tape' && deck === 'play') led += ' on';                        // fita tocando
@@ -3546,7 +3554,7 @@
       mIcon('mPlay', 'play'); $('mAlbPrev').disabled = $('mAlbNext').disabled = true;
     } else if(mview === 'disc' && a){
       var t = a.tracks[curTrack];
-      mTxt('mTrk', (adActive && mode === 'lp') ? '(Publicidade)' : t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
+      mTxt('mTrk', (adVis() && mode === 'lp') ? '(Publicidade)' : t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
       var sig = a.title + '|' + a.tracks.length + '|' + curTrack;
       if(sig !== mc.sigT){ mc.sigT = sig; mRows($('mTracks'), a.tracks.map(function(x){ return [x.title, '']; }), curTrack); }
       if(!mseeking){
