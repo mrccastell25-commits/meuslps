@@ -1059,7 +1059,6 @@
       <button class="mi" id="msFilter" type="button" role="menuitem">Filtro de ruído: desligado</button>
       <button class="mi" id="msPower" type="button" role="menuitem">Desligar o aparelho</button>
       <button class="mi" id="msFull" type="button" role="menuitem">Tela cheia</button>
-      <button class="mi" id="msVideo" type="button" role="menuitem">Vídeo do disco (experimental): ligado</button>
       <button class="mi" id="msSound" type="button" role="menuitem">Som de cliques e folhear: ligado</button>
       <button class="mi danger" id="msStop" type="button" role="menuitem">Parar e guardar na gaveta</button>
       <button class="mi danger" id="msExit" type="button" role="menuitem">Encerrar e sair</button>
@@ -3397,13 +3396,14 @@
        pausa/parada .......... volta à foto do botão (só após 1,5 s, para não piscar ao trocar de faixa)
      Os vídeos são mudos (o som é do YouTube) e ficam embutidos no HTML (<script type="text/plain">).
      ===================================================================== */
-  var mv = {on: true, built: false, shown: false, mode: 'idle', pl: false, npAt: 0, offT: 0, sceneT: 0, vb: null, vl: null, gate: null, gateI: 0, wait: 0, crkUntil: 0};
+  var mv = {on: true, built: false, shown: false, mode: 'idle', pl: false, npAt: 0, offT: 0, sceneT: 0, vb: null, vl: null, gate: null, gateI: 0, wait: 0, crkUntil: 0, alt: 'vid', altAt: 0};
   /* PORTÃO DE INÍCIO (celular com vídeo): ao começar um disco, a música fica retida enquanto roda o vídeo da mão.
        0,56-1,08 s ... a mão aperta START·STOP
        MV_CRK_AT .... corte para a agulha já sobre o disco: entra só o CHIADO do vinil
        fim do vídeo .. a música é liberada (e o loop da agulha assume) */
+  var MV_ALT_VID = 12000, MV_ALT_SCN = 10000;   // tocando: ms no vídeo em loop / ms no disco padrão girando (alternam com fade)
   var MV_CRK_AT = 2.1, MV_PRESS_LEN = 3.08, MV_PRESS_CAP = 1500, MV_CRK_TAIL = 8000, MV_WAIT = 15000;
-  try{ mv.on = localStorage.getItem('gaveta:mvid') !== '0'; }catch(e){}
+  mv.on = true;      // o vídeo no celular agora é sempre ligado (a opção saiu do menu)
   function mvBlobUrl(id){
     var el = $(id); if(!el) return '';
     var bin = atob(el.textContent.trim()), n = bin.length, u = new Uint8Array(n);
@@ -3429,6 +3429,7 @@
     mv.mode = m; var b = mv.vb, l = mv.vl; if(!b || !l) return;
     if(m === 'press'){
       try{ b.currentTime = 0; }catch(e){}
+      if(mv.alt === 'scn') mvAltTo('vid');
       var g0 = mv.gate; if(g0) mvGateArm(g0);
       mvPlay(b, g0 ? function(){ if(mv.gate === g0) mvGateRelease(); } : null);       // não conseguiu tocar o vídeo: não segura a música
       b.classList.add('vis'); l.classList.remove('vis'); l.pause();
@@ -3443,7 +3444,7 @@
   function mvWant(){ return mv.on && !reduceMotion && isPortrait() && mview === 'disc' && !detail.hidden && modal === 'detail' && !!pa; }
   function mvPlaying(){ return detail.classList.contains('playing') && !adActive && powered; }
   function mvOff(){
-    mv.shown = false; mv.pl = false; mv.npAt = 0; mv.wait = 0; clearTimeout(mv.sceneT);
+    mv.shown = false; mv.pl = false; mv.npAt = 0; mv.wait = 0; mv.alt = 'vid'; mv.altAt = 0; clearTimeout(mv.sceneT);
     scene.classList.remove('mvhide'); $('mVid').classList.remove('on');
     clearTimeout(mv.offT); mv.offT = setTimeout(function(){ if(!mv.shown) mvSet('idle'); }, 450);     // pausa só depois do fade-out
   }
@@ -3462,12 +3463,30 @@
       clearTimeout(mv.sceneT); mv.sceneT = setTimeout(function(){ if(mv.shown) scene.classList.add('mvhide'); }, 500);   // esconde a cena por baixo (poupa GPU)
       return;
     }
+    mvAlt(pl && !mv.gate, now);
     if(mv.gate){ mv.npAt = 0; return; }
     if(pl){ mv.npAt = 0; mv.wait = 0; if(!mv.pl){ mv.pl = true; mvSet('press'); } }
     else if(mv.pl){
       if(now < mv.wait){ mv.npAt = 0; return; }    // música já pedida e o YouTube ainda carregando: segue no loop (não volta à foto)
       if(!mv.npAt) mv.npAt = now;
       else if(now - mv.npAt > 1500){ mv.pl = false; mv.npAt = 0; mvSet('idle'); }
+    }
+  }
+
+  /* ---- alternância enquanto toca: vídeo em loop <-> disco padrão girando (fade de 0,4 s entre os dois) ---- */
+  function mvAlt(playing, now){
+    if(!(playing && mv.mode === 'loop')){ if(mv.alt === 'scn') mvAltTo('vid'); mv.altAt = 0; return; }   // pausou/parou/abertura: volta ao vídeo
+    if(!mv.altAt){ mv.altAt = now; return; }
+    if(now - mv.altAt > (mv.alt === 'vid' ? MV_ALT_VID : MV_ALT_SCN)){ mvAltTo(mv.alt === 'vid' ? 'scn' : 'vid'); mv.altAt = now; }
+  }
+  function mvAltTo(a){
+    mv.alt = a; clearTimeout(mv.sceneT);
+    if(a === 'scn'){
+      scene.classList.remove('mvhide'); $('mVid').classList.remove('on');           // mostra a cena por baixo e o vídeo some em fade
+      mv.sceneT = setTimeout(function(){ if(mv.alt === 'scn' && mv.vl) mv.vl.pause(); }, 450);   // poupa o decodificador enquanto está escondido
+    } else {
+      $('mVid').classList.add('on'); if(mv.mode === 'loop' && mv.vl) mvPlay(mv.vl);
+      mv.sceneT = setTimeout(function(){ if(mv.shown && mv.alt === 'vid') scene.classList.add('mvhide'); }, 500);
     }
   }
 
@@ -3639,7 +3658,6 @@
     $('msSync').hidden = !!vReal.hidden; $('msSync').textContent = an ? 'Parar a sincronização dos VUs' : 'Sincronizar VUs e válvulas com o som';
     var fsOn = nativeFs() || winFsNow(), fsApi = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
     $('msFull').hidden = !fsApi || (!fsOn && window.navigator.standalone === true); $('msFull').textContent = fsOn ? 'Sair da tela cheia' : 'Tela cheia';
-    $('msVideo').textContent = 'Vídeo do disco (experimental): ' + (mv.on ? 'ligado' : 'desligado');
     $('msSound').textContent = 'Som de cliques e folhear: ' + (soundOn ? 'ligado' : 'desligado');
     $('mSheet').hidden = false;
   }
@@ -3652,7 +3670,6 @@
   mItem('msPower', function(){ setPower(!powered); });
   mItem('msFull', function(){ toggleFullscreen(); });
   mItem('msSound', function(){ $('sound').click(); });
-  mItem('msVideo', function(){ mv.on = !mv.on; try{ localStorage.setItem('gaveta:mvid', mv.on ? '1' : '0'); }catch(e){} mvTick(); });
   mItem('msExit', function(){ exitApp(); });
   mItem('msStop', function(){ closeDetail(); });
   $('msCancel').addEventListener('click', mSheetClose);
