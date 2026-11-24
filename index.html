@@ -271,6 +271,7 @@
   .l2led{position:absolute;right:14px;top:7px;width:8px;height:9px;border-radius:1px;background:#3a0f0b}
   .l2led.on{background:#ff3b22;box-shadow:0 0 7px 2px rgba(255,60,30,.75)}
   .l2led.blink{animation:ledb 1s linear infinite}
+  .l2led.on.ad{background:#ffd21f;box-shadow:0 0 7px 2px rgba(255,205,40,.85)}   /* comercial: amarelo piscante */
   @keyframes ledb{0%,49%{opacity:1}50%,100%{opacity:.25}}
 
   /* botões giratórios (recorte da própria foto girando) */
@@ -1586,9 +1587,14 @@
       }
     });
   }
-  function playId(id){
+  function playIdNow(id){
     if(player){ if(playerReady) player.loadVideoById(id); else pendingId = id; return; }
     if(apiReady) makePlayer(id); else pendingId = id;
+  }
+  function playId(id){          // celular com vídeo: primeiro roda o vídeo da mão (mvHold); a música só entra quando ele termina
+    var a = PA(), t = curTrack;
+    if(mvHold(function(){ playIdNow(id); }, function(){ return powered && mode === 'lp' && PA() === a && curTrack === t; }, false)) return;
+    playIdNow(id);
   }
   function onState(e){
     var s = e.data;
@@ -2500,6 +2506,7 @@
   function setPower(on){
     powered = on;
     if(!on){
+      mvGateDrop(true);
       radioStopAudio();
       if(rec.on) recStop();
       deck = 'stop'; shuttle = 0; tseek = null; ytPlay = false;
@@ -2516,12 +2523,18 @@
     if(mode === 'radio'){ radioToggle(); return; }
     if(mode === 'tape'){ deckPlay(true); return; }
     if(!PA().tracks.length){ note('Nenhum disco no prato. Escolha um disco na loja.'); return; }
+    if(mv.gate){ mvGateDrop(true); return; }       // tocou de novo durante a abertura (vídeo da mão): cancela
     if(!player || !playerReady) return;
-    try{ if(player.getPlayerState() === 1) player.pauseVideo(); else player.playVideo(); }catch(e){}
+    try{ if(player.getPlayerState() === 1) player.pauseVideo(); else lpPlay(); }catch(e){}
+  }
+  function lpPlay(){            // retoma o disco; no celular, antes roda o vídeo da mão
+    if(mvHold(function(){ try{ player.playVideo(); }catch(e){} }, function(){ return powered && mode === 'lp'; }, true)) return;
+    try{ player.playVideo(); }catch(e){}
   }
   function mainPrev(){ if(!powered) return; if(mode === 'radio') radioStep(-1); else if(mode === 'tape') tapeSeek(-1); else trackStep(-1); }
   function mainNext(){ if(!powered) return; if(mode === 'radio') radioStep(1); else if(mode === 'tape') tapeSeek(1); else trackStep(1); }
   function stopPlayback(){
+    mvGateDrop(true);
     try{ if(player && playerReady){ player.pauseVideo(); player.seekTo(0, true); } }catch(e){}
     hifiTime(0, (player && playerReady && player.getDuration) ? player.getDuration() : 0);
   }
@@ -2576,6 +2589,7 @@
     if(deckTimer){ clearInterval(deckTimer); deckTimer = 0; }
     if(rec.on) recStop();
     deck = 'stop'; shuttle = 0; mode = 'lp'; ytPlay = false; lpResume = null;
+    mvGateDrop(false);
     crackleOff(); whirStop(true); radioStopAudio();
     hifiRefresh();
   }
@@ -2633,9 +2647,15 @@
     }
     if(quiet) return;
     var waiting = on && sig && (sig.state === -1 || sig.state === 5);   // parado sem começar: quase sempre o navegador pedindo um toque, não um comercial
-    note(on ? (waiting ? 'O player não começou sozinho. Toque no play dele (ou no ✕ para fechar).' : 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio.' : '')) : 'Fim do comercial. Som de volta.');
+    note(on ? (waiting ? 'O player não começou sozinho. Toque no play dele (ou no ✕ para parar).' : 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio ou no ✕ para parar.' : '')) : 'Fim do comercial. Som de volta.');
   }
-  $('adClose').addEventListener('click', function(){ adSnoozeUntil = performance.now() + 20000; adSet(false, null, true); note('Player fechado.'); });
+  $('adClose').addEventListener('click', function(){     // ✕ = para tudo: o comercial é cortado junto (antes só escondia a janela e o áudio continuava)
+    try{ if(mode === 'tape') deckStop(); }catch(e){}
+    try{ if(player && playerReady) player.stopVideo(); }catch(e){}
+    ytPlay = false; detail.classList.remove('playing');
+    adSet(false, null, true);
+    note('Comercial encerrado. Toque em play para continuar.');
+  });
   function adSlowNet(){ try{ var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection; return !!c && (!!c.saveData || /(2g|3g)$/.test(c.effectiveType || '')); }catch(e){ return false; } }
   function adWatch(){                                 // chamada a cada 100 ms pelo deckTick
     var ok = player && playerReady && powered && (mode === 'lp' || mode === 'tape');
@@ -2686,7 +2706,7 @@
     crk = {src: src, g: g, kind: kind};
   }
   function syncCrackle(){
-    var want = !filterOn && powered && ytPlay && !muted && !adActive;
+    var want = !filterOn && powered && (ytPlay || mvCrk()) && !muted && !adActive;
     if(!want){ if(crk) crk.g.gain.value = 0; return; }
     if(!crk || crk.kind !== mode) buildCrackle(mode);
     if(crk) crk.g.gain.value = 0.2 * volume / 100;
@@ -2831,7 +2851,8 @@
     if(flashMsg && performance.now() < flashUntil) line = flashMsg;
     var f = (clamp(frac, 0, 1) * 100).toFixed(1) + '%';
     var led = 'l2led';
-    if(rec.on) led += (ytPlay && mode === 'lp') ? ' on' : ' on blink';
+    if(adActive && (mode === 'lp' || mode === 'tape')){ led += ' on ad blink'; line = '(Publicidade)'; }
+    else if(rec.on) led += (ytPlay && mode === 'lp') ? ' on' : ' on blink';
     else if(mode === 'lp' && ytPlay) led += ' on';                                   // disco tocando
     else if(mode === 'tape' && deck === 'play') led += ' on';                        // fita tocando
     else if(mode === 'radio' && radio.state === 'playing') led += ' on';             // rádio sintonizada
@@ -3368,7 +3389,12 @@
        pausa/parada .......... volta à foto do botão (só após 1,5 s, para não piscar ao trocar de faixa)
      Os vídeos são mudos (o som é do YouTube) e ficam embutidos no HTML (<script type="text/plain">).
      ===================================================================== */
-  var mv = {on: true, built: false, shown: false, mode: 'idle', pl: false, npAt: 0, offT: 0, sceneT: 0, vb: null, vl: null};
+  var mv = {on: true, built: false, shown: false, mode: 'idle', pl: false, npAt: 0, offT: 0, sceneT: 0, vb: null, vl: null, gate: null, gateI: 0, wait: 0, crkUntil: 0};
+  /* PORTÃO DE INÍCIO (celular com vídeo): ao começar um disco, a música fica retida enquanto roda o vídeo da mão.
+       0,56-1,08 s ... a mão aperta START·STOP
+       MV_CRK_AT .... corte para a agulha já sobre o disco: entra só o CHIADO do vinil
+       fim do vídeo .. a música é liberada (e o loop da agulha assume) */
+  var MV_CRK_AT = 2.1, MV_PRESS_LEN = 3.08, MV_PRESS_CAP = 1500, MV_CRK_TAIL = 8000, MV_WAIT = 15000;
   try{ mv.on = localStorage.getItem('gaveta:mvid') !== '0'; }catch(e){}
   function mvBlobUrl(id){
     var el = $(id); if(!el) return '';
@@ -3384,17 +3410,19 @@
       [mv.vb, mv.vl].forEach(function(v){ v.muted = true; v.defaultMuted = true; });
       mv.vb.src = mvBlobUrl('mvDataBtn'); mv.vl.src = mvBlobUrl('mvDataLoop');
     }catch(e){}
-    mv.vb.addEventListener('ended', function(){ if(mv.pl && mv.mode === 'press') mvSet('loop'); });
+    mv.vb.addEventListener('ended', function(){ if(mv.gate) mvGateRelease(); else if(mv.pl && mv.mode === 'press') mvSet('loop'); });
     $('mVid').addEventListener('click', function(){            // igual a tocar no prato da cena: volta para a gaveta (o som continua)
       if(!isPortrait() || mview !== 'disc' || detail.hidden || modal !== 'detail') return;
       playClick('ui'); minimizeDetail();
     });
   }
-  function mvPlay(v){ try{ var p = v.play(); if(p && p.catch) p.catch(function(){}); }catch(e){} }
+  function mvPlay(v, onFail){ try{ var p = v.play(); if(p && p.catch) p.catch(function(){ if(onFail) onFail(); }); }catch(e){ if(onFail) onFail(); } }
   function mvSet(m){
     mv.mode = m; var b = mv.vb, l = mv.vl; if(!b || !l) return;
     if(m === 'press'){
-      try{ b.currentTime = 0; }catch(e){} mvPlay(b);
+      try{ b.currentTime = 0; }catch(e){}
+      var g0 = mv.gate; if(g0) mvGateArm(g0);
+      mvPlay(b, g0 ? function(){ if(mv.gate === g0) mvGateRelease(); } : null);       // não conseguiu tocar o vídeo: não segura a música
       b.classList.add('vis'); l.classList.remove('vis'); l.pause();
     } else if(m === 'loop'){
       try{ l.currentTime = 0; }catch(e){} mvPlay(l); l.classList.add('vis');
@@ -3407,24 +3435,84 @@
   function mvWant(){ return mv.on && !reduceMotion && isPortrait() && mview === 'disc' && !detail.hidden && modal === 'detail' && !!pa; }
   function mvPlaying(){ return detail.classList.contains('playing') && !adActive && powered; }
   function mvOff(){
-    mv.shown = false; mv.pl = false; mv.npAt = 0; clearTimeout(mv.sceneT);
+    mv.shown = false; mv.pl = false; mv.npAt = 0; mv.wait = 0; clearTimeout(mv.sceneT);
     scene.classList.remove('mvhide'); $('mVid').classList.remove('on');
     clearTimeout(mv.offT); mv.offT = setTimeout(function(){ if(!mv.shown) mvSet('idle'); }, 450);     // pausa só depois do fade-out
   }
   function mvTick(){
     var want = mvWant();
-    if(!want){ if(mv.shown) mvOff(); return; }
+    if(!want){
+      if(mv.gate) mvGateRelease(true);             // saiu da tela do disco com a partida retida: a música começa assim mesmo
+      if(mv.shown) mvOff();
+      return;
+    }
     mvBuild(); var pl = mvPlaying(), now = performance.now();
     if(!mv.shown){
-      mv.shown = true; mv.pl = pl; clearTimeout(mv.offT); $('mVid').classList.add('on'); mvSet(pl ? 'loop' : 'idle');
+      mv.shown = true; clearTimeout(mv.offT); $('mVid').classList.add('on');
+      if(mv.gate){ mv.pl = true; mvSet('press'); }
+      else { mv.pl = pl; mvSet(pl ? 'loop' : 'idle'); }
       clearTimeout(mv.sceneT); mv.sceneT = setTimeout(function(){ if(mv.shown) scene.classList.add('mvhide'); }, 500);   // esconde a cena por baixo (poupa GPU)
       return;
     }
-    if(pl){ mv.npAt = 0; if(!mv.pl){ mv.pl = true; mvSet('press'); } }
+    if(mv.gate){ mv.npAt = 0; return; }
+    if(pl){ mv.npAt = 0; mv.wait = 0; if(!mv.pl){ mv.pl = true; mvSet('press'); } }
     else if(mv.pl){
+      if(now < mv.wait){ mv.npAt = 0; return; }    // música já pedida e o YouTube ainda carregando: segue no loop (não volta à foto)
       if(!mv.npAt) mv.npAt = now;
       else if(now - mv.npAt > 1500){ mv.pl = false; mv.npAt = 0; mvSet('idle'); }
     }
+  }
+
+  /* ---- portão de início ---- */
+  function mvIntroOk(viewNow){      // o vídeo da mão vai aparecer? (na abertura do disco a tela ainda não está visível)
+    if(!mv.on || reduceMotion || !isPortrait() || document.hidden || !powered || !pa) return false;
+    if(!opened || modal !== 'detail') return false;
+    if(viewNow && (detail.hidden || mview !== 'disc')) return false;
+    return true;
+  }
+  // true = a partida ficou retida (fn roda quando o vídeo da mão termina); false = toque já
+  function mvHold(fn, ok, viewNow){
+    if(mv.gate){ mv.gate.fn = fn; mv.gate.ok = ok; return true; }      // trocou de faixa durante a abertura: só muda o alvo
+    if(!mvIntroOk(viewNow) || (mv.shown && mv.pl)) return false;       // já está no loop (troca de faixa): sem abertura
+    mvBuild(); if(!mv.vb || !mv.vb.src) return false;                  // sem o vídeo: não segura a música
+    try{ if(player && playerReady && ytPlay) player.pauseVideo(); }catch(e){}   // outro disco/fita tocando: para enquanto a mão aperta o botão
+    var g = {fn: fn, ok: ok, t0: performance.now(), pressAt: 0, crk: false};
+    mv.gate = g; mv.pl = true; mv.npAt = 0; mv.crkUntil = 0;
+    mv.gateI = setInterval(mvGateWatch, 40);
+    if(mv.shown) mvSet('press');       // senão o mvTick mostra o vídeo e começa em seguida
+    return true;
+  }
+  function mvGateArm(g){ g.pressAt = performance.now(); }
+  function mvGateWatch(){
+    var g = mv.gate, b = mv.vb; if(!g || !b){ mvGateStop(); return; }
+    if(!powered || mode !== 'lp'){ mvGateDrop(true); return; }
+    var now = performance.now();
+    if(document.hidden){ mvGateRelease(true); return; }               // app em segundo plano: não espera vídeo
+    if(!g.pressAt){ if(now - g.t0 > 2500) mvGateRelease(true); return; }   // o vídeo nunca começou
+    var t = b.currentTime || 0, d = b.duration || MV_PRESS_LEN;
+    if(!g.crk && mv.mode === 'press' && t >= MV_CRK_AT){ g.crk = true; syncCrackle(); }   // agulha no disco: entra o chiado
+    if(b.ended || now - g.pressAt > d * 1000 + MV_PRESS_CAP) mvGateRelease();
+  }
+  function mvGateStop(){ clearInterval(mv.gateI); mv.gateI = 0; }
+  function mvGateRelease(quiet){    // o vídeo acabou: libera a música
+    var g = mv.gate; if(!g) return;
+    mv.gate = null; mvGateStop();
+    mv.crkUntil = performance.now() + MV_CRK_TAIL;    // chiado segue até a música entrar
+    if(!quiet){ mv.wait = performance.now() + MV_WAIT; if(mv.mode === 'press') mvSet('loop'); }
+    var ok = false; try{ ok = g.ok(); }catch(e){}
+    if(ok){ try{ g.fn(); }catch(e){} }
+    syncCrackle();
+  }
+  function mvGateDrop(toIdle){      // cancela a partida retida (sem tocar)
+    if(!mv || !mv.gate) return;
+    mv.gate = null; mvGateStop(); mv.crkUntil = 0;
+    if(toIdle){ mv.pl = false; mv.npAt = 0; if(mv.shown) mvSet('idle'); }
+    syncCrackle();
+  }
+  function mvCrk(){                 // chiado antes de a música entrar
+    if(!mv || ytPlay || mode !== 'lp') return false;
+    if(mv.gate) return mv.gate.crk;
+    return performance.now() < mv.crkUntil;
   }
   setInterval(mvTick, 200);
   (function(){ var mc0 = $('mCov'); if(!mc0) return;
@@ -3458,7 +3546,7 @@
       mIcon('mPlay', 'play'); $('mAlbPrev').disabled = $('mAlbNext').disabled = true;
     } else if(mview === 'disc' && a){
       var t = a.tracks[curTrack];
-      mTxt('mTrk', t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
+      mTxt('mTrk', (adActive && mode === 'lp') ? '(Publicidade)' : t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
       var sig = a.title + '|' + a.tracks.length + '|' + curTrack;
       if(sig !== mc.sigT){ mc.sigT = sig; mRows($('mTracks'), a.tracks.map(function(x){ return [x.title, '']; }), curTrack); }
       if(!mseeking){
@@ -3466,7 +3554,7 @@
         sk.value = Math.round(f * 1000); sk.style.setProperty('--p', (f * 100).toFixed(1) + '%');
         mTxt('mCur', fmt(lpCur)); mTxt('mDur', fmt(lpDur));
       }
-      mIcon('mPlay', (mode === 'lp' && ytPlay) ? 'pause' : 'play');
+      mIcon('mPlay', (mode === 'lp' && (ytPlay || mv.gate)) ? 'pause' : 'play');
       $('mAlbPrev').disabled = navLock || curAlbum === 0; $('mAlbNext').disabled = navLock || curAlbum === N - 1;
     } else if(mview === 'tape'){
       var ns = tape.segs.length;
@@ -4216,7 +4304,7 @@
   (function(){
     if(!('mediaSession' in navigator)) return;
     function h(n, f){ try{ navigator.mediaSession.setActionHandler(n, f); }catch(e){} }
-    h('play', function(){ if(mode === 'radio') radioPlay(); else if(mode === 'tape') deckPlay(false); else { try{ player.playVideo(); }catch(e){} } });
+    h('play', function(){ if(mode === 'radio') radioPlay(); else if(mode === 'tape') deckPlay(false); else { lpPlay(); } });
     h('pause', function(){ if(mode === 'radio') radioStopAudio(); else { try{ player.pauseVideo(); }catch(e){} } });
     h('nexttrack', function(){ mainNext(); });
     h('previoustrack', function(){ mainPrev(); });
