@@ -458,6 +458,8 @@
   .mtitle[data-v="disc"]{--c:#ffb347}.mtitle[data-v="tape"]{--c:#7dffb0}.mtitle[data-v="radio"]{--c:#6bc7ff}
   .mico svg{width:26px;height:26px;display:block;filter:drop-shadow(0 0 5px var(--c))}
   .msc[hidden],.mnote[hidden],.moff[hidden]{display:none!important}
+  /* celular: display (com o led) + barra de posição + botões ficam fixos no topo; só a lista abaixo rola */
+  .mfix{position:sticky;top:0;z-index:6;margin:-12px -14px 8px;padding:12px 14px 8px;background:linear-gradient(#1d130a,#150e08);border-bottom:1px solid rgba(184,146,79,.22);box-shadow:0 8px 14px -9px rgba(0,0,0,.7)}
   .mcard{border:1px solid rgba(184,146,79,.42);border-radius:14px;background:linear-gradient(#2a1c10,#170f08);box-shadow:inset 0 1px 0 rgba(255,225,170,.12),0 6px 16px rgba(0,0,0,.45);padding:12px}
   .mnow{display:flex;gap:12px;align-items:center}
   .mcov{position:relative;width:76px;height:76px;flex:none;border-radius:8px;overflow:hidden;background:#111;box-shadow:0 4px 10px rgba(0,0,0,.6);cursor:pointer}
@@ -1013,6 +1015,7 @@
     <div class="moff" id="mOff" hidden><span>Aparelho desligado</span><button class="mbtn2" id="mOn" type="button">Ligar</button></div>
 
     <section class="msc" id="mbDisc" aria-label="Disco">
+      <div class="mfix">
       <div class="mcard mnow">
         <div class="mcov" id="mCov"></div>
         <div class="mnowt"><b id="mTrk">—</b><span id="mArt"></span><small id="mAlb"></small></div>
@@ -1026,11 +1029,13 @@
         <button class="mk" id="mNext" type="button" aria-label="Próxima faixa"></button>
         <button class="mk sm" id="mAlbNext" type="button" aria-label="Próximo disco"></button>
       </div>
+      </div>
       <h3 class="mh">FAIXAS</h3>
       <ul class="mlist" id="mTracks"></ul>
     </section>
 
     <section class="msc" id="mbTape" aria-label="Tape Deck" hidden>
+      <div class="mfix">
       <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span><span class="mled" aria-hidden="true"></span></div>
       <div class="mkeys">
         <button class="mkey" id="mtRew" type="button"><i></i><span class="ic"></span><small>REW</small></button>
@@ -1041,6 +1046,7 @@
         <button class="mkey" id="mtPause" type="button"><i></i><span class="ic"></span><small>PAUSE</small></button>
       </div>
       <div class="mrecrow"><label for="mtLvl">Nível de gravação</label><input class="mrange" id="mtLvl" type="range" min="0" max="100" value="50"></div>
+      </div>
       <p class="mhelp">Para gravar: toque um disco, vá à tela Tape Deck e aperte REC. A fita grava a faixa que estiver tocando e continua nas seguintes.</p>
       <h3 class="mh">MINHA FITA</h3>
       <ul class="mlist" id="mTapeList"></ul>
@@ -1051,11 +1057,13 @@
     </section>
 
     <section class="msc" id="mbRadio" aria-label="Rádio" hidden>
+      <div class="mfix">
       <div class="mcard mst"><b id="mRName">—</b><span id="mRInfo">—</span><span class="mled" aria-hidden="true"></span></div>
       <div class="mctl">
         <button class="mk" id="mRPrev" type="button" aria-label="Rádio anterior"></button>
         <button class="mk big" id="mRPlay" type="button" aria-label="Tocar ou parar"></button>
         <button class="mk" id="mRNext" type="button" aria-label="Próxima rádio"></button>
+      </div>
       </div>
       <h3 class="mh">ESTAÇÕES DO RIO GRANDE DO SUL</h3>
       <ul class="mlist" id="mRList"></ul>
