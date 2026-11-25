@@ -275,9 +275,10 @@
   @keyframes ledb{0%,49%{opacity:1}50%,100%{opacity:.25}}
   /* texto longo que não cabe no display: rola na horizontal (vai, para, volta) para dar tempo de ler */
   .mq.mq{overflow:hidden;white-space:nowrap;text-overflow:clip;max-width:100%}
-  .mq.run{animation:mqs var(--mqd,8s) ease-in-out infinite alternate}
-  @keyframes mqs{0%,18%{text-indent:0}82%,100%{text-indent:var(--mqx,0px)}}
-  @media (prefers-reduced-motion:reduce){.mq.run{animation:none}.mq.mq{text-overflow:ellipsis}}
+  .mqi{display:inline-block;white-space:nowrap;will-change:transform;backface-visibility:hidden;animation:mqc var(--mqd,10s) linear infinite}
+  .mqg{display:inline-block;width:2.2em}
+  @keyframes mqc{from{transform:translate3d(0,0,0)}to{transform:translate3d(var(--mqx,0px),0,0)}}
+  @media (prefers-reduced-motion:reduce){.mq.mq{text-overflow:ellipsis}}
   /* led redondo dos displays do celular (mesmas cores/funções do led quadrado do desktop) */
   .mnow,.mlcd,.mst{position:relative}
   .mled{position:absolute;right:9px;top:9px;width:9px;height:9px;border-radius:50%;background:#3a0f0b;pointer-events:none}
@@ -2847,10 +2848,19 @@
   var tapeUiOn = null;
   /* rolagem horizontal dos textos longos dos displays */
   var MQ_SEL = '#l2t, #hLcd1 .lt, #hLcd1 .lcdmsg, #mTrk, #mArt, #mAlb, #mTapeSub, #mRName, #mRInfo', mqAt = 0;
+  var MQ_SPEED = 42;                  // px por segundo (letreiro: velocidade constante)
+  var mqReduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   function mqMeasure(el){
-    el.classList.remove('run'); el.style.removeProperty('--mqx'); el.style.removeProperty('--mqd');
+    var raw = el._mqRaw != null ? el._mqRaw : el.textContent;
+    el._mqRaw = raw; el.textContent = raw;                        // volta ao texto simples para medir
+    if(mqReduce && mqReduce.matches) return;
     var d = el.scrollWidth - el.clientWidth;
-    if(d > 2){ el.style.setProperty('--mqx', -(d + 6) + 'px'); el.style.setProperty('--mqd', Math.max(5, d / 26 + 3.6).toFixed(1) + 's'); el.classList.add('run'); }
+    if(d <= 2) return;                                             // cabe: fica parado
+    var inner = document.createElement('span'), a = document.createElement('span'), g = document.createElement('span'), b = document.createElement('span');
+    inner.className = 'mqi'; a.textContent = raw; g.className = 'mqg'; b.textContent = raw; b.setAttribute('aria-hidden', 'true');
+    inner.appendChild(a); inner.appendChild(g); inner.appendChild(b); el.textContent = ''; el.appendChild(inner);
+    var shift = b.offsetLeft;                                      // distância de uma volta completa (texto + espaço)
+    inner.style.setProperty('--mqx', -shift + 'px'); inner.style.setProperty('--mqd', (shift / MQ_SPEED).toFixed(2) + 's');
   }
   function mqTick(force){
     var now = performance.now(); if(!force && now - mqAt < 300) return; mqAt = now;
@@ -2858,7 +2868,8 @@
     for(i = 0; i < els.length; i++){
       el = els[i]; if(!el.classList.contains('mq')) el.classList.add('mq');
       t = el.textContent; w = el.clientWidth;
-      if(force || el._mqT !== t || el._mqW !== w){ el._mqT = t; el._mqW = w; mqMeasure(el); }
+      if(el._mqT !== t) el._mqRaw = null;                          // o app trocou o texto: o texto guardado ficou velho
+      if(force || el._mqT !== t || el._mqW !== w){ mqMeasure(el); el._mqT = el.textContent; el._mqW = w; }
     }
   }
   window.addEventListener('resize', function(){ mqTick(true); });
