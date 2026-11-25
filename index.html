@@ -2660,7 +2660,10 @@
         if(m === 'tape'){ if(deck === 'play') playTapeAt(tpos); }
         else if(m === 'lp'){
           var t = a0 && a0.tracks[tr0];
-          if(t && PA() === a0 && curTrack === tr0 && player && playerReady) player.loadVideoById({videoId: t.id, startSeconds: pos > 2 ? Math.floor(pos) : 0});
+          if(t && PA() === a0 && curTrack === tr0 && player && playerReady){
+            var go = function(){ player.loadVideoById({videoId: t.id, startSeconds: pos > 2 ? Math.floor(pos) : 0}); };
+            if(!mvHold(go, function(){ return powered && mode === 'lp' && PA() === a0 && curTrack === tr0; }, true)) go();
+          }
         }
       }catch(e){}
     }, 300);
@@ -3475,7 +3478,14 @@
     }
     mvAlt(pl && !mv.gate, now);
     if(mv.gate){ mv.npAt = 0; return; }
-    if(pl){ mv.npAt = 0; mv.wait = 0; if(!mv.pl){ mv.pl = true; mvSet('press'); } }
+    if(pl){
+      mv.npAt = 0; mv.wait = 0;
+      if(!mv.pl){
+        if(adSuspect || !mvOurVideo()) return;         // pode ser comercial ainda: espera confirmar que é a faixa
+        // a música voltou sozinha (fim do comercial, travada longa...): pausa já, roda a mão apertando o botão e só solta quando a agulha entra
+        if(!mvHold(function(){ try{ player.playVideo(); }catch(e){} }, function(){ return powered && mode === 'lp'; }, true)){ mv.pl = true; mvSet('press'); }
+      }
+    }
     else if(mv.pl){
       if(now < mv.wait){ mv.npAt = 0; return; }    // música já pedida e o YouTube ainda carregando: segue no loop (não volta à foto)
       if(!mv.npAt) mv.npAt = now;
@@ -3501,6 +3511,9 @@
   }
 
   /* ---- portão de início ---- */
+  function mvOurVideo(){            // o player está na faixa esperada (e não num comercial)?
+    try{ var s = adSignals(), e = adExpectedId(), id = s.id || s.url; return !e || !id || id === e; }catch(x){ return true; }
+  }
   function mvIntroOk(viewNow){      // o vídeo da mão vai aparecer? (na abertura do disco a tela ainda não está visível)
     if(!mv.on || reduceMotion || !isPortrait() || document.hidden || !powered || !pa) return false;
     if(!opened || modal !== 'detail') return false;
@@ -4052,6 +4065,7 @@
     if(camBusy || cBusy) return;                                 // a câmera está se mexendo
     if(opened){                                                  // disco aberto (aba Sortear do celular): volta à loja e sorteia
       if(modal !== 'detail') return;
+      try{ mainStop(); }catch(e){}                                // sorteou: a música anterior para já (senão toca durante todo o trajeto até o novo disco)
       goShop(); var tries = 0;
       var w0 = setInterval(function(){ if((!opened && !camBusy) || ++tries > 50){ clearInterval(w0); if(!opened) raffle(); } }, 80);
       return;
@@ -4065,6 +4079,7 @@
     if(fresh.length) pool = fresh;
     if(!pool.length){ toast('Não há discos nas gavetas para sortear.', true); return; }
     var p = pool[Math.floor(Math.random() * pool.length)];
+    try{ mainStop(); }catch(e){}                                  // idem: para o que estiver tocando (disco minimizado, fita ou rádio)
     ensureAudio();
     function start(){
       if(counterOf(p.d) !== curCounter){ curCounter = counterOf(p.d); renderShop(); setChrome(false); }   // vai até o balcão do disco
