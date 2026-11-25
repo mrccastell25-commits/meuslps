@@ -2648,12 +2648,22 @@
     var waiting = on && sig && (sig.state === -1 || sig.state === 5);   // parado sem começar: quase sempre o navegador pedindo um toque, não um comercial
     note(on ? (waiting ? 'O player não começou sozinho. Toque no play dele (ou no ✕ para parar).' : 'Comercial: som silenciado.' + (AD_SHOW_PLAYER ? ' Toque em Pular anúncio ou no ✕ para parar.' : '')) : 'Fim do comercial. Som de volta.');
   }
-  $('adClose').addEventListener('click', function(){     // ✕ = para tudo: o comercial é cortado junto (antes só escondia a janela e o áudio continuava)
-    try{ if(mode === 'tape') deckStop(); }catch(e){}
+  $('adClose').addEventListener('click', function(){     // ✕ = corta o comercial (para o player) e já retoma a música de onde estava
+    var m = mode, a0 = PA(), tr0 = curTrack, pos = lpCur, tpos = tape.pos;
     try{ if(player && playerReady) player.stopVideo(); }catch(e){}
     ytPlay = false; detail.classList.remove('playing');
     adSet(false, null, true);
-    note('Comercial encerrado. Toque em play para continuar.');
+    note('Comercial encerrado. Retomando a música…');
+    setTimeout(function(){
+      if(!powered || adActive || ytPlay || mode !== m) return;                        // você mexeu em algo nesse meio tempo: não força
+      try{
+        if(m === 'tape'){ if(deck === 'play') playTapeAt(tpos); }
+        else if(m === 'lp'){
+          var t = a0 && a0.tracks[tr0];
+          if(t && PA() === a0 && curTrack === tr0 && player && playerReady) player.loadVideoById({videoId: t.id, startSeconds: pos > 2 ? Math.floor(pos) : 0});
+        }
+      }catch(e){}
+    }, 300);
   });
   /* visual de publicidade (LED amarelo + visor): vale já na detecção formal (adActive) e também na SUSPEITA —
      o player saiu de "tocando" sem você pausar. Dá ~0,8 s de folga se a música já tinha começado (corte no meio da faixa)
