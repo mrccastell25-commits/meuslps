@@ -273,6 +273,20 @@
   .l2led.blink{animation:ledb 1s linear infinite}
   .l2led.on.ad{background:#ffd21f;box-shadow:0 0 7px 2px rgba(255,205,40,.85)}   /* comercial: amarelo piscante */
   @keyframes ledb{0%,49%{opacity:1}50%,100%{opacity:.25}}
+  /* texto longo que não cabe no display: rola na horizontal (vai, para, volta) para dar tempo de ler */
+  .mq.mq{overflow:hidden;white-space:nowrap;text-overflow:clip;max-width:100%}
+  .mq.run{animation:mqs var(--mqd,8s) ease-in-out infinite alternate}
+  @keyframes mqs{0%,18%{text-indent:0}82%,100%{text-indent:var(--mqx,0px)}}
+  @media (prefers-reduced-motion:reduce){.mq.run{animation:none}.mq.mq{text-overflow:ellipsis}}
+  /* led redondo dos displays do celular (mesmas cores/funções do led quadrado do desktop) */
+  .mnow,.mlcd,.mst{position:relative}
+  .mled{position:absolute;right:9px;top:9px;width:9px;height:9px;border-radius:50%;background:#3a0f0b;pointer-events:none}
+  .mled.on{background:#ff3b22;box-shadow:0 0 7px 2px rgba(255,60,30,.75)}
+  .mled.blink{animation:ledb 1s linear infinite}
+  .mled.on.ad{background:#ffd21f;box-shadow:0 0 7px 2px rgba(255,205,40,.85)}
+  .mnow .mnowt{padding-right:12px}
+  /* dica de como usar as gavetas: só no celular (some no desktop) */
+  @media not all and (max-aspect-ratio: 5/4){#hint{display:none}}
 
   /* botões giratórios (recorte da própria foto girando) */
   .hknob{touch-action:none;cursor:grab;outline:none;border-radius:50%}
@@ -1001,6 +1015,7 @@
       <div class="mcard mnow">
         <div class="mcov" id="mCov"></div>
         <div class="mnowt"><b id="mTrk">—</b><span id="mArt"></span><small id="mAlb"></small></div>
+        <span class="mled" aria-hidden="true"></span>
       </div>
       <div class="mseek"><span id="mCur">0:00</span><input class="mrange" id="mSeek" type="range" min="0" max="1000" value="0" aria-label="Posição da faixa"><span id="mDur">0:00</span></div>
       <div class="mctl">
@@ -1015,7 +1030,7 @@
     </section>
 
     <section class="msc" id="mbTape" aria-label="Tape Deck" hidden>
-      <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span></div>
+      <div class="mlcd"><b id="mTapeCnt">0:00</b><span id="mTapeSub">Fita vazia</span><span class="mled" aria-hidden="true"></span></div>
       <div class="mkeys">
         <button class="mkey" id="mtRew" type="button"><i></i><span class="ic"></span><small>REW</small></button>
         <button class="mkey" id="mtPlay" type="button"><i></i><span class="ic"></span><small>PLAY</small></button>
@@ -1035,7 +1050,7 @@
     </section>
 
     <section class="msc" id="mbRadio" aria-label="Rádio" hidden>
-      <div class="mcard mst"><b id="mRName">—</b><span id="mRInfo">—</span></div>
+      <div class="mcard mst"><b id="mRName">—</b><span id="mRInfo">—</span><span class="mled" aria-hidden="true"></span></div>
       <div class="mctl">
         <button class="mk" id="mRPrev" type="button" aria-label="Rádio anterior"></button>
         <button class="mk big" id="mRPlay" type="button" aria-label="Tocar ou parar"></button>
@@ -2830,8 +2845,32 @@
     set.forEach(function(id, i){ var e = hHot[id]; if(e){ e.style.left = (X0 + i * (w + GAP)) + 'px'; e.style.width = w + 'px'; } });
   }
   var tapeUiOn = null;
+  /* rolagem horizontal dos textos longos dos displays */
+  var MQ_SEL = '#l2t, #hLcd1 .lt, #hLcd1 .lcdmsg, #mTrk, #mArt, #mAlb, #mTapeSub, #mRName, #mRInfo', mqAt = 0;
+  function mqMeasure(el){
+    el.classList.remove('run'); el.style.removeProperty('--mqx'); el.style.removeProperty('--mqd');
+    var d = el.scrollWidth - el.clientWidth;
+    if(d > 2){ el.style.setProperty('--mqx', -(d + 6) + 'px'); el.style.setProperty('--mqd', Math.max(5, d / 26 + 3.6).toFixed(1) + 's'); el.classList.add('run'); }
+  }
+  function mqTick(force){
+    var now = performance.now(); if(!force && now - mqAt < 300) return; mqAt = now;
+    var els = document.querySelectorAll(MQ_SEL), i, el, t, w;
+    for(i = 0; i < els.length; i++){
+      el = els[i]; if(!el.classList.contains('mq')) el.classList.add('mq');
+      t = el.textContent; w = el.clientWidth;
+      if(force || el._mqT !== t || el._mqW !== w){ el._mqT = t; el._mqW = w; mqMeasure(el); }
+    }
+  }
+  window.addEventListener('resize', function(){ mqTick(true); });
+  var mLeds = null;
+  function ledMirror(cls){            // o led redondo do celular acompanha o quadrado do desktop
+    if(!mLeds) mLeds = document.querySelectorAll('.mled');
+    var c = cls.replace('l2led', 'mled');
+    for(var i = 0; i < mLeds.length; i++) if(mLeds[i].className !== c) mLeds[i].className = c;
+  }
   function hifiRefresh(){
     if(!hHot.hPower) return;
+    mqTick(false);
     var dmx = dmode();                        // desktop: no modo fita, criar/apagar ocupam o lugar do "Abrir no YouTube Music"; no rádio ele não faz sentido
     if(dmx !== tapeUiOn && hHot.hOpen && hHot.hMix && hHot.hRaf){ tapeUiOn = dmx; hHot.hOpen.hidden = true; navLayout(dmx); }
     if(hHot.hErase) hHot.hErase.disabled = !tape.segs.length;
@@ -2839,7 +2878,7 @@
     paintToggles(); paintDeck(); paintMini(); radPaint(); paintVleds(muted ? 0 : volume); mobRefresh(); msUpdate();
     if(!powered){
       if(lcdSig !== 'off'){
-        lcdSig = 'off'; hLcd1.innerHTML = ''; l2t.textContent = ''; l2c.textContent = ''; l2d.textContent = ''; l2fill.style.width = '0'; l2led.className = 'l2led';
+        lcdSig = 'off'; hLcd1.innerHTML = ''; l2t.textContent = ''; l2c.textContent = ''; l2d.textContent = ''; l2fill.style.width = '0'; l2led.className = 'l2led'; ledMirror('l2led');
         lastTxt = {t: null, c: null, d: null, f: null, led: null};
       }
       return;
@@ -2881,7 +2920,7 @@
     if(big !== lastTxt.c){ l2c.textContent = big; lastTxt.c = big; }
     if(small !== lastTxt.d){ l2d.textContent = small; lastTxt.d = small; }
     if(f !== lastTxt.f){ l2fill.style.width = f; lastTxt.f = f; }
-    if(led !== lastTxt.led){ l2led.className = led; lastTxt.led = led; }
+    if(led !== lastTxt.led){ l2led.className = led; lastTxt.led = led; ledMirror(led); }
 
     var ns2 = tape.segs.length;
     var rl = radio.list[radio.idx];
