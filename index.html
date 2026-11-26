@@ -81,9 +81,13 @@
   .rec .shade{position:absolute;inset:0;background:#0b1211;border-radius:2px;pointer-events:none;opacity:0}
   .rec .wear{position:absolute;inset:0;border-radius:2px;pointer-events:none;
     background:
-      radial-gradient(circle closest-side at 50% 50%,transparent 0 86%,rgba(255,255,255,.06) 88.5%,rgba(255,255,255,.18) 92%,rgba(0,0,0,.14) 94%,transparent 97%),
       linear-gradient(90deg,rgba(0,0,0,.2),transparent 3%,transparent 97%,rgba(0,0,0,.2)),
       linear-gradient(180deg,rgba(255,255,255,.14),transparent 5%)}
+
+  /* marca do disco na capa: aro em arcos interrompidos e irregulares (como desgaste de verdade), bem sutil */
+  .rec .wear::before,.sleeve::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(circle closest-side at 50% 50%,transparent 0 86%,rgba(255,255,255,.025) 89%,rgba(255,255,255,.075) 92%,rgba(0,0,0,.05) 94.5%,transparent 97.5%);
+    -webkit-mask-image:conic-gradient(from 25deg,#000 0 13%,transparent 18% 26%,rgba(0,0,0,.45) 30% 49%,transparent 55% 62%,#000 67% 83%,rgba(0,0,0,.25) 88%,transparent 92% 100%);mask-image:conic-gradient(from 25deg,#000 0 13%,transparent 18% 26%,rgba(0,0,0,.45) 30% 49%,transparent 55% 62%,#000 67% 83%,rgba(0,0,0,.25) 88%,transparent 92% 100%)}
 
   .crate{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;border-radius:3px 3px 7px 7px;
     background:
@@ -121,7 +125,7 @@
   .detail.open .sleeve{opacity:1;transform:none}
   .sleeve svg{position:absolute;inset:0;display:block;width:100%;height:100%}
   .sleeve::after{content:"";position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(circle closest-side at 50% 50%,transparent 0 86%,rgba(255,255,255,.06) 88.5%,rgba(255,255,255,.18) 92%,rgba(0,0,0,.14) 94%,transparent 97%),linear-gradient(90deg,rgba(0,0,0,.2),transparent 3%,transparent 97%,rgba(0,0,0,.2))}
+    background:linear-gradient(90deg,rgba(0,0,0,.2),transparent 3%,transparent 97%,rgba(0,0,0,.2))}
   .info{width:min(100%,440px)}
   .info h2{margin:0;font-size:25px;line-height:1.12;font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere}
   .info .meta{margin:5px 0 14px;color:rgba(238,243,241,.72);font-size:15px}
