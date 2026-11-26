@@ -674,6 +674,7 @@
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.75);
     color:#e8c48a;font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-user-select:none;user-select:none}
   .heq.on{pointer-events:auto}
+  .heqhot{position:absolute;left:1010px;top:40px;width:686px;height:181px;pointer-events:none;visibility:hidden}   /* só marca a área do equalizador (referência de posição do mouse) */
   @media (prefers-reduced-motion:reduce){.hflipper{transition-duration:.3s}}
   .heq>*{position:absolute}
   .heq .eqf{left:0;top:0;width:686px;height:181px}
@@ -4547,11 +4548,35 @@
     clearTimeout(eq.tm); eq.tm = setTimeout(eqIdle, EQ_IDLE);
   }
   function eqIdle(){
-    if(eq.drag){ eq.tm = setTimeout(eqIdle, EQ_IDLE); return; }          // ainda segurando um fader
+    if(eq.drag || eq.hover){ eq.tm = setTimeout(eqIdle, EQ_IDLE); return; }          // ainda segurando um fader / mouse sobre a área
     if(eq.heq && eq.heq.contains(document.activeElement) && document.activeElement.classList.contains('hef')) document.activeElement.blur();
     if(eq.heq && eq.heq.classList.contains('on')){ eq.heq.classList.remove('on'); eqFlip(); }
     eq.fd.forEach(function(f){ f.el.classList.remove('act'); });
   }
+  /* mouse sobre a área do equalizador (desktop): abre o módulo; ao sair, volta aos VUs depois de um instante.
+     A posição é conferida pela geometria da área (não pelo alvo do clique), porque a placa gira em 3D e troca de face sob o ponteiro. */
+  var EQ_LEAVE = 1200, eqPt = null, eqRaf = 0, eqHot = null;
+  function eqHoverCheck(){
+    eqRaf = 0; if(!eqPt) return;
+    if(!eqHot){ var fl = document.querySelector('.hflip'); if(!fl || !fl.parentNode) return; eqHot = document.createElement('div'); eqHot.className = 'heqhot'; fl.parentNode.appendChild(eqHot); }
+    var inside = false;
+    if(!isPortrait() && opened && modal === 'detail' && !detail.hidden){
+      var r = eqHot.getBoundingClientRect();
+      if(r.width > 0 && eqPt.x >= r.left && eqPt.x <= r.right && eqPt.y >= r.top && eqPt.y <= r.bottom){
+        var el = document.elementFromPoint(eqPt.x, eqPt.y);
+        inside = !!(el && scene.contains(el));                         // não vale se há menu/janela por cima
+      }
+    }
+    if(inside && !eq.hover){ eq.hover = true; eqPoke(); }
+    else if(inside){ eqPoke(); }                                        // segue por cima: mantém aberto
+    else if(!inside && eq.hover){ eq.hover = false; clearTimeout(eq.tm); eq.tm = setTimeout(eqIdle, EQ_LEAVE); }
+  }
+  document.addEventListener('pointermove', function(e){
+    if(e.pointerType === 'touch') return;
+    eqPt = {x: e.clientX, y: e.clientY};
+    if(!eqRaf) eqRaf = requestAnimationFrame(eqHoverCheck);
+  }, {passive: true});
+  document.addEventListener('pointerleave', function(){ eqPt = null; if(eq.hover){ eq.hover = false; clearTimeout(eq.tm); eq.tm = setTimeout(eqIdle, EQ_LEAVE); } });
   function midiEq(i, raw, m){                         // knob absoluto (potenciômetro): 0..127 → −12..+12 dB, com "pé" no zero
     if(i >= EQ_F.length) return;
     if(!midiNeedDisc()) return;
