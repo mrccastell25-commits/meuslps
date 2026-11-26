@@ -2855,7 +2855,7 @@
   }
   var tapeUiOn = null;
   /* rolagem horizontal dos textos longos dos displays */
-  var MQ_SEL = '#l2t, #hLcd1 .lt, #hLcd1 .lcdmsg, #mTrk, #mArt, #mAlb, #mTapeSub, #mRName, #mRInfo', mqAt = 0;
+  var MQ_SEL = '#l2t, #hLcd1 .lcdl.cur .lt, #mTrk, #mArt, #mAlb, #mTapeSub, #mRName, #mRInfo, .mrow.cur .t', mqAt = 0;   // listas: só a linha selecionada rola
   var MQ_SPEED = 42;                  // px por segundo (letreiro: velocidade constante)
   var mqReduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   function mqMeasure(el){
@@ -2872,6 +2872,10 @@
   }
   function mqTick(force){
     var now = performance.now(); if(!force && now - mqAt < 300) return; mqAt = now;
+    var old = document.querySelectorAll('.mq'), k;
+    for(k = 0; k < old.length; k++){                              // linha que deixou de ser a selecionada: volta ao texto parado
+      if(!old[k].matches(MQ_SEL)){ if(old[k]._mqRaw != null) old[k].textContent = old[k]._mqRaw; old[k]._mqT = old[k]._mqRaw = null; old[k].classList.remove('mq'); }
+    }
     var els = document.querySelectorAll(MQ_SEL), i, el, t, w;
     for(i = 0; i < els.length; i++){
       el = els[i]; if(!el.classList.contains('mq')) el.classList.add('mq');
