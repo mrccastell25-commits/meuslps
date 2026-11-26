@@ -1638,7 +1638,7 @@
       if(mode === 'tape'){ if(Date.now() - lastAdv > 900) tapeAdvance(); return; }
       var a = PA();
       if(curTrack < a.tracks.length - 1) playTrack(curTrack + 1);
-      else { if(rec.on) recStop('O disco terminou. Gravação encerrada.'); else dNote.textContent = 'Fim do disco.'; }
+      else { if(rec.on) recStop('O disco terminou. Gravação encerrada.'); else note('Fim do disco.'); }
     }
   }
   function onErr(e){
@@ -1651,7 +1651,7 @@
       150:'o dono do vídeo bloqueou a reprodução em outros sites',
       153:'o YouTube recusou por falta de origem (abra o site por http/https, não pelo arquivo no computador)'
     }[c] || 'erro desconhecido';
-    dNote.textContent = 'Não consegui tocar esta faixa (' + why + ', código ' + c + ').' + (c === 153 ? '' : ' Pulando para a próxima.');
+    note('Não consegui tocar esta faixa (' + why + ', código ' + c + ').' + (c === 153 ? '' : ' Pulando para a próxima.'));
     if(mode === 'tape'){ if(c !== 153) tapeAdvance(); return; }
     if(c === 153) return;
     var at = curTrack, pl0 = PA();
@@ -1915,7 +1915,7 @@
     navigator.mediaDevices.getDisplayMedia({video:true, audio:true, preferCurrentTab:true, selfBrowserSurface:'include', systemAudio:'include'}).then(function(st){
       if(!st.getAudioTracks().length){
         st.getTracks().forEach(function(t){ t.stop(); });
-        dNote.textContent = 'Não veio áudio. Na janela de compartilhamento escolha esta aba e marque "Compartilhar áudio da guia".';
+        note('Não veio áudio. Na janela de compartilhamento escolha esta aba e marque "Compartilhar áudio da guia".');
         return;
       }
       try{ st.getVideoTracks().forEach(function(t){ t.applyConstraints({frameRate:1}).catch(function(){}); }); }catch(e){}
@@ -1931,7 +1931,7 @@
       anData = new Uint8Array(node.frequencyBinCount); an = node; anStream = st;
       st.getAudioTracks()[0].addEventListener('ended', stopReal);
       dNote.textContent = ''; paintReal();
-    }).catch(function(){ dNote.textContent = 'Compartilhamento não autorizado. O efeito visual continua ativo.'; });
+    }).catch(function(){ note('Compartilhamento não autorizado. O efeito visual continua ativo.'); });
   }
   if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) vReal.hidden = false;
   vReal.addEventListener('click', function(){ if(an) stopReal(); else startReal(); });
@@ -2138,7 +2138,7 @@
       }
     }catch(e){}
   })();
-  function note(m){ dNote.textContent = m; flashMsg = m; flashUntil = performance.now() + 3800; }
+  function note(m){ dNote.textContent = m; flashMsg = m; flashUntil = performance.now() + 3800 + Math.max(0, String(m).length - 28) * 110; }
   function tapeLen(){ var s = 0; for(var i = 0; i < tape.segs.length; i++) s += tape.segs[i].dur; return s; }
   function segOffset(i){ var s = 0; for(var k = 0; k < i; k++) s += tape.segs[k].dur; return s; }
   function segAt(pos){
@@ -2339,8 +2339,7 @@
   var QUICK_N = 12, QUICK_EST = 210;     // 12 faixas × ~3min30 cabem num lado de C-90
   function tapeEst(){ for(var i = 0; i < tape.segs.length; i++) if(tape.segs[i].est) return true; return false; }
   function tapeMix(){
-    if(rec.on){ note('Pare a gravação antes de montar uma fita rápida.'); return; }
-    if(tape.segs.length && window.confirm && !window.confirm('Montar uma fita rápida vai substituir a fita atual. Continuar?')) return;
+    if(rec.on){ rec.on = false; closeSeg(); if(deck === 'rec') deck = 'stop'; }       // fita rápida tem prioridade: encerra a gravação sem aviso
     var pool = [], seen = {}, d, i, j, list, t;
     for(d = 0; d < NDRAW; d++){
       list = parseList(drawerText(d));
@@ -3266,7 +3265,7 @@
   hHot.hOpen.target = '_blank'; hHot.hOpen.rel = 'noopener';
   /* no modo fita, estes dois ocupam o lugar do "Abrir no YouTube Music" (a alternância está no hifiRefresh) */
   hot('hMix', 'Criar fita rápida', 704, 803, 104, 38, 'rect hnav', tapeMix).title = 'Monta uma fita com faixas sorteadas das gavetas e já começa a tocar';
-  hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
+  hot('hErase', 'Apagar fita', 814, 803, 104, 38, 'rect hnav', function(){ tapeErase(); });
   /* no modo disco (desktop), o lugar do "Abrir no YouTube Music" é o atalho de sortear um disco */
   hot('hRaf', 'Sortear disco', 704, 803, 104, 38, 'rect hnav', function(){ raffle(); }).title = 'Sorteia um disco de qualquer gaveta e já toca';
   hHot.hOpen.hidden = true; hHot.hRaf.hidden = true;
@@ -3651,7 +3650,7 @@
     var now = performance.now(), a = PA();
     // aviso passageiro e aparelho desligado
     var msg = (flashMsg && now < flashUntil) ? flashMsg : '';
-    mTxt('mNote', msg); $('mNote').hidden = !msg;
+    $('mNote').hidden = true;                          // o aviso aparece no display (abaixo), não em banner
     $('mOff').hidden = powered;
     // volume
     var v = muted ? 0 : volume;
@@ -3663,7 +3662,7 @@
       mIcon('mPlay', 'play'); $('mAlbPrev').disabled = $('mAlbNext').disabled = true;
     } else if(mview === 'disc' && a){
       var t = a.tracks[curTrack];
-      mTxt('mTrk', (adVis() && mode === 'lp') ? '(Publicidade)' : t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
+      mTxt('mTrk', (adVis() && mode === 'lp') ? '(Publicidade)' : msg ? msg : t ? t.title : '—'); mTxt('mArt', a.artist || ''); mTxt('mAlb', a.title);
       var sig = a.title + '|' + a.tracks.length + '|' + curTrack;
       if(sig !== mc.sigT){ mc.sigT = sig; mRows($('mTracks'), a.tracks.map(function(x){ return [x.title, '']; }), curTrack); }
       if(!mseeking){
@@ -3676,7 +3675,7 @@
     } else if(mview === 'tape'){
       var ns = tape.segs.length;
       mTxt('mTapeCnt', (rec.on ? '● ' : '') + fmt(tape.pos));
-      mTxt('mTapeSub', (ns ? ns + (ns === 1 ? ' faixa' : ' faixas') + ' · ' + (tapeEst() ? '~' : '') + fmt(tapeLen()) : 'Fita vazia') + ' de ' + fmt(TAPE_CAP) + (rec.on ? ' · gravando' : mode === 'tape' && deck === 'play' ? ' · tocando' : ''));
+      mTxt('mTapeSub', msg ? msg : (adVis() && mode === 'tape') ? '(Publicidade)' : (ns ? ns + (ns === 1 ? ' faixa' : ' faixas') + ' · ' + (tapeEst() ? '~' : '') + fmt(tapeLen()) : 'Fita vazia') + ' de ' + fmt(TAPE_CAP) + (rec.on ? ' · gravando' : mode === 'tape' && deck === 'play' ? ' · tocando' : ''));
       var run = deck === 'play' || rec.on;
       var on = {mtRec: rec.on, mtPlay: run, mtFf: deck === 'ff', mtRew: deck === 'rew', mtStop: false, mtPause: run && !ytPlay && powered};
       for(var id in on) $(id).classList.toggle('on', !!on[id]);
@@ -3688,7 +3687,7 @@
       var rr = radio.list[radio.idx], ron = mode === 'radio';
       mTxt('mRName', rr ? rr.name : (radio.loading ? 'Buscando rádios…' : 'Sem rádios'));
       var stt = !ron ? 'TOQUE PARA OUVIR' : radio.state === 'playing' ? 'AO VIVO' : radio.state === 'loading' ? 'SINTONIZANDO…' : radio.state === 'error' ? 'SEM SINAL' : 'PARADA';
-      mTxt('mRInfo', stt + (rr && rr.codec ? ' · ' + rr.codec.toUpperCase() + (rr.bitrate ? ' ' + rr.bitrate + 'K' : '') : ''));
+      mTxt('mRInfo', msg ? msg : stt + (rr && rr.codec ? ' · ' + rr.codec.toUpperCase() + (rr.bitrate ? ' ' + rr.bitrate + 'K' : '') : ''));
       mIcon('mRPlay', (ron && (radio.state === 'playing' || radio.state === 'loading')) ? 'pause' : 'play');
       var sr = radio.list.length + '|' + radio.loading;
       if(sr !== mc.sigR){ mc.sigR = sr; mc.ridx = -1; mRows($('mRList'), radio.list.map(function(x){ return [x.name, x.codec ? x.codec.toUpperCase() + (x.bitrate ? ' ' + x.bitrate + 'K' : '') : '']; }), radio.idx); }
@@ -3731,7 +3730,7 @@
   mTap('mtStop', function(){ if(powered) deckStop(); });
   mTap('mtPause', function(){ deckPauseKey(); });
   mTap('mtMix', function(){ tapeMix(); });
-  mTap('mtErase', function(){ if(!tape.segs.length || !window.confirm || window.confirm('Apagar toda a fita?')) tapeErase(); });
+  mTap('mtErase', function(){ tapeErase(); });
   $('mtLvl').addEventListener('input', function(e){ setRecLevel(+e.target.value); mc.lvl = recLevel; e.target.style.setProperty('--p', recLevel + '%'); });
   $('mTapeList').addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.mrow') : null; if(b){ playClick('ui'); tapeJump(+b.getAttribute('data-i')); mobRefresh(); } });
   // rádio
@@ -3920,6 +3919,7 @@
     });
   });
   function toast(msg, bad){
+    if(opened && modal === 'detail' && !detail.hidden && powered){ note(msg); return; }      // player aberto: o aviso aparece no display
     var t = $('fbToast');
     if(!t){ t = document.createElement('div'); t.id = 'fbToast'; t.setAttribute('role', 'status');
       t.style.cssText = 'position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:99999;padding:10px 16px;border-radius:999px;font:600 13px system-ui,sans-serif;color:#fff;max-width:90vw;text-align:center';
@@ -4857,6 +4857,7 @@
       [].slice.call(root.querySelectorAll(sel)).forEach(function(el){
         if(el.disabled || el.closest('[hidden],[inert],.yt-hidden') || el.getClientRects().length === 0) return;      // .yt-hidden: player do YouTube e o ✕ que pausa a detecção de comercial
         if(el.matches('.hhot:not(.hnav),.hknob,.hrdial,[role=slider]')) return;                   // controles de som/aparelho: já têm mapeamento próprio
+        if(el.matches('.cdot')) return;                                                           // bolinhas dos balcões: nunca na navegação (só os botões ◀ ▶ do balcão)
         if(!dlg && det && det.contains(el) && !el.matches('.hnav,[role=menuitem],.mi')) return;   // no player: só os menus
         var cs = getComputedStyle(el); if(cs.visibility === 'hidden' || cs.pointerEvents === 'none' || +cs.opacity === 0) return;
         var r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
