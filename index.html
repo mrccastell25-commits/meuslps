@@ -1882,7 +1882,7 @@
     if(!player || !playerReady) return;
     // adActive: silencia só durante o comercial; o volume escolhido pelo usuário não é alterado
     try{
-      if(adActive || adSuspect){ player.setVolume(0); player.mute(); }     // comercial (ou suspeita de): volume 0 E mudo (nunca devolve o volume aqui)
+      if(adActive || adSuspect || (mv && mv.gate && mv.gate.mute)){ player.setVolume(0); player.mute(); }     // comercial (ou suspeita de): volume 0 E mudo (nunca devolve o volume aqui)
       else { player.setVolume(volume); if(muted || volume === 0) player.mute(); else player.unMute(); }
     }catch(e){}
   }
@@ -2666,6 +2666,16 @@
     try{ console.info('[comercial]', on ? 'detectado' : 'terminou', sig ? JSON.stringify(sig) : ''); }catch(e){}
     detail.classList.toggle('ad', !!on);              // congela giro/animações enquanto dura o comercial
     if(on) [120, 400, 900, 1800].forEach(function(ms){ setTimeout(function(){ if(adActive) applyVolume(); }, ms); });
+    if(!on && !quiet && mode === 'lp' && player && playerReady){     // celular: saiu do comercial com o vídeo parado -> abertura (mão -> agulha) antes da música
+      var pos0 = 0; try{ pos0 = player.getCurrentTime() || 0; }catch(e){}
+      if(mvHold(function(){
+        try{ if(pos0 < 4) player.seekTo(0, true); }catch(e){}       // comercial no começo da faixa: ela recomeça do zero, sem perder o início
+        applyVolume(); try{ player.playVideo(); }catch(e){}
+      }, function(){ return powered && mode === 'lp'; }, true)){
+        if(mv.gate) mv.gate.mute = true;                              // segue mudo até a música ser liberada (sem vazar o início)
+        try{ player.mute(); player.pauseVideo(); }catch(e){}
+      }
+    }
     applyVolume();                                    // silencia / devolve o volume que estava
     if(AD_SHOW_PLAYER){
       var box = document.querySelector('.yt-hidden');
@@ -3617,12 +3627,15 @@
     if(!quiet){ mv.wait = performance.now() + MV_WAIT; if(mv.mode === 'press') mvSet('loop'); }
     var ok = false; try{ ok = g.ok(); }catch(e){}
     if(ok){ try{ g.fn(); }catch(e){} }
+    if(g.mute) applyVolume();
     syncCrackle();
   }
   function mvGateDrop(toIdle){      // cancela a partida retida (sem tocar)
     if(!mv || !mv.gate) return;
+    var wasMute = !!mv.gate.mute;
     mv.gate = null; mvGateStop(); mv.crkUntil = 0;
     if(toIdle){ mv.pl = false; mv.npAt = 0; if(mv.shown) mvSet('idle'); }
+    if(wasMute) applyVolume();                       // cancelou com o player mudo: devolve o volume
     syncCrackle();
   }
   function mvCrk(){                 // chiado antes de a música entrar
